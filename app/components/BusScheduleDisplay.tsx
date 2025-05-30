@@ -1,28 +1,47 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { busDestinations } from '@/lib/data'
+import { busDestinations } from "@/lib/data"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import type { ScheduleType, ScheduleEntry } from "@/lib/data"
 
 interface BusScheduleDisplayProps {
   destination: string
-  outSchedule: string[]
-  inSchedule: string[]
+  outSchedule: ScheduleEntry[]
+  inSchedule: ScheduleEntry[]
   nextDepartureOut: string | null
   nextDepartureIn: string | null
   notes: string
-  scheduleType: 'Weekday' | 'Weekend'
+  scheduleType: ScheduleType
 }
 
-export default function BusScheduleDisplay({ 
-  destination, 
-  outSchedule, 
-  inSchedule, 
-  nextDepartureOut, 
+export default function BusScheduleDisplay({
+  destination,
+  outSchedule,
+  inSchedule,
+  nextDepartureOut,
   nextDepartureIn,
   notes,
-  scheduleType
+  scheduleType,
 }: BusScheduleDisplayProps) {
-  const destinationName = busDestinations.find(d => d.id === destination)?.name || destination;
+  const destinationName = busDestinations.find((d) => d.id === destination)?.name || destination
+
+  const scheduleTypeLabel = {
+    weekday: "Weekday (Mon-Thu)",
+    friday: "Friday",
+    weekend: "Weekend (Sat-Sun)",
+  }[scheduleType]
+
+  // Only show badge for vans, not for buses or regular services
+  const getServiceBadge = (serviceType: string) => {
+    if (serviceType === "van") {
+      return (
+        <Badge variant="secondary" className="absolute -top-2 -right-2 text-[10px]">
+          Van
+        </Badge>
+      )
+    }
+    return null
+  }
 
   return (
     <Card className="w-full">
@@ -30,13 +49,13 @@ export default function BusScheduleDisplay({
         <CardTitle className="text-lg">Campus to {destinationName}</CardTitle>
         <div className="flex flex-col">
           <CardDescription className="text-sm">
-            Next departure (Out): {nextDepartureOut || 'No more departures today'}
+            Next departure (Out): {nextDepartureOut || "No more departures today"}
           </CardDescription>
           <CardDescription className="text-sm">
-            Next departure (In): {nextDepartureIn || 'No more departures today'}
+            Next departure (In): {nextDepartureIn || "No more departures today"}
           </CardDescription>
           <Badge variant="outline" className="mt-2 self-start">
-            {scheduleType} Schedule
+            {scheduleTypeLabel}
           </Badge>
         </div>
       </CardHeader>
@@ -49,9 +68,10 @@ export default function BusScheduleDisplay({
           <TabsContent value="outbound">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 sm:gap-2 text-xs sm:text-sm">
               {outSchedule.length > 0 ? (
-                outSchedule.map((time) => (
-                  <div key={time} className="bg-gray-100 rounded p-1 sm:p-2 text-center">
-                    {time}
+                outSchedule.map((entry) => (
+                  <div key={entry.time} className="bg-gray-100 rounded p-1 sm:p-2 text-center relative">
+                    {entry.time}
+                    {getServiceBadge(entry.serviceType)}
                   </div>
                 ))
               ) : (
@@ -62,9 +82,10 @@ export default function BusScheduleDisplay({
           <TabsContent value="inbound">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 sm:gap-2 text-xs sm:text-sm">
               {inSchedule.length > 0 ? (
-                inSchedule.map((time) => (
-                  <div key={time} className="bg-gray-100 rounded p-1 sm:p-2 text-center">
-                    {time}
+                inSchedule.map((entry) => (
+                  <div key={entry.time} className="bg-gray-100 rounded p-1 sm:p-2 text-center relative">
+                    {entry.time}
+                    {getServiceBadge(entry.serviceType)}
                   </div>
                 ))
               ) : (
@@ -83,4 +104,3 @@ export default function BusScheduleDisplay({
     </Card>
   )
 }
-
