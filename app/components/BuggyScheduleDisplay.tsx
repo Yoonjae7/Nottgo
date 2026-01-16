@@ -1,3 +1,4 @@
+import { format } from "date-fns"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -10,6 +11,7 @@ interface BuggyScheduleDisplayProps {
   scheduleType: "Weekday" | "Weekend"
   stopIndex: number
   isFriday: boolean
+  currentTime: Date
 }
 
 export default function BuggyScheduleDisplay({
@@ -18,7 +20,23 @@ export default function BuggyScheduleDisplay({
   scheduleType,
   stopIndex,
   isFriday,
+  currentTime,
 }: BuggyScheduleDisplayProps) {
+  // Check if a time has passed
+  const isTimePassed = (timeString: string): boolean => {
+    const [hours, minutes] = timeString.split(":").map(Number)
+    const now = new Date(currentTime)
+    const scheduleTime = new Date(now)
+    scheduleTime.setHours(hours, minutes, 0, 0)
+    
+    // Handle times that are past midnight (like 00:00) - treat as next day
+    if (hours === 0 || (hours < 6 && now.getHours() >= 20)) {
+      scheduleTime.setDate(scheduleTime.getDate() + 1)
+    }
+    
+    return scheduleTime < now
+  }
+
   return (
     <Card className="w-full">
       <CardHeader className="pb-2">
@@ -35,6 +53,9 @@ export default function BuggyScheduleDisplay({
         </div>
       </CardHeader>
       <CardContent>
+        <div className="text-left text-xs text-gray-500 mb-3">
+          Current time: {format(currentTime, "HH:mm:ss")}
+        </div>
         {scheduleType === "Weekday" ? (
           <>
             {isFriday && (
@@ -45,11 +66,24 @@ export default function BuggyScheduleDisplay({
             )}
             <h3 className="font-semibold text-sm mb-2">Upcoming arrivals:</h3>
             <div className="grid grid-cols-3 gap-2 text-sm">
-              {arrivalTimes.map((time) => (
-                <div key={time} className="bg-gray-100 rounded p-1 text-center">
-                  {time}
-                </div>
-              ))}
+              {arrivalTimes.map((time) => {
+                const passed = isTimePassed(time)
+                const isNext = time === nextArrival
+                let bgColor = "bg-gray-100"
+                if (passed) {
+                  bgColor = "bg-red-200"
+                } else if (isNext) {
+                  bgColor = "bg-yellow-200"
+                }
+                return (
+                  <div
+                    key={time}
+                    className={`${bgColor} rounded p-1 text-center relative`}
+                  >
+                    {time}
+                  </div>
+                )
+              })}
             </div>
           </>
         ) : (

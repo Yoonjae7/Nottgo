@@ -113,6 +113,7 @@ export const busSchedule = {
         { time: "08:30", serviceType: "regular" },
         { time: "10:15", serviceType: "regular" },
         { time: "12:15", serviceType: "regular" },
+        { time: "14:15", serviceType: "regular" },
         { time: "14:30", serviceType: "regular" },
         { time: "16:30", serviceType: "regular" },
         { time: "17:00", serviceType: "regular" },
@@ -146,12 +147,12 @@ export const busSchedule = {
         { time: "16:30", serviceType: "regular" },
         { time: "17:15", serviceType: "regular" },
         { time: "18:30", serviceType: "regular" },
-        { time: "19:00", serviceType: "regular" },
+        { time: "19:30", serviceType: "regular" },
         { time: "21:30", serviceType: "regular" },
         { time: "23:30", serviceType: "regular" },
       ],
     },
-    notes: "This service will pass and stop at MRT Sg Jernih station before proceeding to Kajang KTM station.",
+    notes: "Outbound - This service will pass and stop at MRT Sg Jernih station before proceeding to Kajang KTM station. Inbound - Bus pick up point is Gate A.",
   },
   TTS: {
     weekday: {
@@ -262,7 +263,7 @@ export const busSchedule = {
     weekend: {
       out: [
         { time: "11:30", serviceType: "regular" },
-        { time: "12:30", serviceType: "regular" },
+        { time: "18:30", serviceType: "regular" },
       ],
       in: [
         { time: "15:15", serviceType: "regular" },
@@ -270,7 +271,7 @@ export const busSchedule = {
       ],
     },
     notes:
-      "Route #D: This service will stop by at Ecohill Walk Mall before arriving at LOTUS and before proceeding to Campus on return trips.",
+      "Route #D: Outbound - This service will pass and stop at Ecohill Walk Mall after LOTUS Semenyih. Inbound - This service will pass and stop at Ecohill Walk Mall before proceeding to campus.",
   },
   MosqueAlItt: {
     weekday: {

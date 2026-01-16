@@ -25,36 +25,50 @@ export default function Home() {
   const [selectedStop, setSelectedStop] = useState<number>(0)
   const [selectedDestination, setSelectedDestination] = useState<string>(busDestinations[0].id)
   const [showFullSchedule, setShowFullSchedule] = useState(false)
-  const [currentTime, setCurrentTime] = useState(new Date())
-  const [scheduleType, setScheduleType] = useState<ScheduleType>("weekday")
+  const [currentTime, setCurrentTime] = useState<Date | null>(null)
+  const [autoScheduleType, setAutoScheduleType] = useState<ScheduleType>("weekday")
+  const [manualScheduleType, setManualScheduleType] = useState<ScheduleType | null>(null)
   const [isFriday, setIsFriday] = useState(false)
   const [isBuggy, setIsBuggy] = useState(true)
 
+  // Use manual override if set, otherwise use automatic detection
+  const scheduleType = manualScheduleType || autoScheduleType
+
   useEffect(() => {
+    // Initialize time on client side only to avoid hydration mismatch
+    const now = new Date()
+    setCurrentTime(now)
+    setAutoScheduleType(getScheduleType(now))
+    setIsFriday(now.getDay() === 5)
+
     const timer = setInterval(() => {
       const now = new Date()
       setCurrentTime(now)
-      setScheduleType(getScheduleType(now))
+      // Only update auto schedule type if manual override is not set
+      if (!manualScheduleType) {
+        setAutoScheduleType(getScheduleType(now))
+      }
       setIsFriday(now.getDay() === 5)
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [])
+  }, [manualScheduleType])
 
-  const buggyNextArrival = getBuggyNextArrival(selectedStop, currentTime, isFriday)
+  // Use a fallback date if currentTime is not yet initialized
+  const timeForCalculations = currentTime || new Date()
+  const buggyNextArrival = getBuggyNextArrival(selectedStop, timeForCalculations, isFriday)
   const buggyArrivalTimes = getBuggyArrivalTimes(selectedStop, isFriday)
 
   const busOutSchedule = getBusSchedule(selectedDestination, scheduleType, "out")
   const busInSchedule = getBusSchedule(selectedDestination, scheduleType, "in")
-  const busNextDepartureOut = getBusNextDeparture(selectedDestination, scheduleType, "out", currentTime)
-  const busNextDepartureIn = getBusNextDeparture(selectedDestination, scheduleType, "in", currentTime)
+  const busNextDepartureOut = getBusNextDeparture(selectedDestination, scheduleType, "out", timeForCalculations)
+  const busNextDepartureIn = getBusNextDeparture(selectedDestination, scheduleType, "in", timeForCalculations)
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-start p-2 sm:p-4 md:p-6 bg-gray-100">
       <Card className="w-full max-w-[95%] sm:max-w-md">
         <CardHeader>
           <CardTitle className="text-xl sm:text-2xl">Campus Shuttle System</CardTitle>
-          <CardDescription className="text-sm">Current time: {format(currentTime, "HH:mm:ss")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -121,6 +135,7 @@ export default function Home() {
                     scheduleType={scheduleType === "weekend" ? "Weekend" : "Weekday"}
                     stopIndex={selectedStop}
                     isFriday={isFriday}
+                    currentTime={timeForCalculations}
                   />
                 ) : (
                   <BusScheduleDisplay
@@ -131,6 +146,9 @@ export default function Home() {
                     nextDepartureIn={busNextDepartureIn}
                     notes={busSchedule[selectedDestination].notes}
                     scheduleType={scheduleType}
+                    isManualOverride={manualScheduleType !== null}
+                    onScheduleTypeChange={setManualScheduleType}
+                    currentTime={timeForCalculations}
                   />
                 )}
                 <Button onClick={() => setShowFullSchedule(true)} variant="outline" className="w-full text-sm">
