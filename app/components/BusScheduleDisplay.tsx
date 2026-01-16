@@ -92,14 +92,14 @@ export default function BusScheduleDisplay({
         </div>
       </CardHeader>
       <CardContent>
+        <div className="text-left text-xs text-gray-500 mb-3">
+          Current time: {format(currentTime, "HH:mm:ss")}
+        </div>
         <Tabs defaultValue="outbound" className="w-full" onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="outbound">From Campus</TabsTrigger>
             <TabsTrigger value="inbound">To Campus</TabsTrigger>
           </TabsList>
-          <div className="text-left text-xs text-gray-500 mt-2 mb-2">
-            Current time: {format(currentTime, "HH:mm:ss")}
-          </div>
           <TabsContent value="outbound">
             <div className="mb-3">
               <p className="text-sm text-gray-600 mb-2">

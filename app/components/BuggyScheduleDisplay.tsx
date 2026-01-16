@@ -64,7 +64,7 @@ export default function BuggyScheduleDisplay({
                 <AlertDescription>No service between 12:30 PM - 2:00 PM due to Friday Prayer</AlertDescription>
               </Alert>
             )}
-            <h3 className="font-semibold text-sm mb-2">Upcoming arrivals:</h3>
+            <h3 className="font-semibold text-sm mb-2">Today's schedule:</h3>
             <div className="grid grid-cols-3 gap-2 text-sm">
               {arrivalTimes.map((time) => {
                 const passed = isTimePassed(time)
