@@ -79,6 +79,7 @@ export const busSchedule = {
         { time: "08:30", serviceType: "regular" },
         { time: "10:15", serviceType: "regular" },
         { time: "12:15", serviceType: "regular" },
+        { time: "14:15", serviceType: "regular" },
         { time: "14:30", serviceType: "regular" },
         { time: "16:30", serviceType: "regular" },
         { time: "17:00", serviceType: "regular" },
