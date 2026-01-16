@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+export const dynamic = 'force-dynamic'
 import { format } from "date-fns"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
