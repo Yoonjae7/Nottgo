@@ -151,6 +151,7 @@ export default function Home() {
                     scheduleType={scheduleType === "weekend" ? "Weekend" : "Weekday"}
                     stopIndex={selectedStop}
                     isFriday={isFriday}
+                    currentTime={currentTime}
                   />
                 ) : selectedDirection ? (
                   <BusScheduleDisplay
