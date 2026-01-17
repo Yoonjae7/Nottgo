@@ -78,7 +78,7 @@ export default function BusScheduleDisplay({
             <CardDescription className="text-sm text-gray-600">
               Current Time: 
             </CardDescription>
-            <div className="text-lg font-semibold text-gray-700">
+            <div className="text-lg font-semibold text-gray-700" suppressHydrationWarning>
               {format(currentTime, "HH:mm:ss")}
             </div>
           </div>

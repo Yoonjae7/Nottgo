@@ -53,7 +53,7 @@ export default function BuggyScheduleDisplay({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="text-left text-xs text-gray-500 mb-3">
+        <div className="text-left text-xs text-gray-500 mb-3" suppressHydrationWarning>
           Current time: {format(currentTime, "HH:mm:ss")}
         </div>
         {scheduleType === "Weekday" ? (
