@@ -82,7 +82,20 @@ export default function FullBusSchedule({ destination, onClose }: FullBusSchedul
         {schedule.notes && (
           <div className="p-4 text-sm text-gray-600">
             <h3 className="font-semibold mb-1">Notes:</h3>
-            <p>{schedule.notes}</p>
+            {typeof schedule.notes === "string" ? (
+              <p>{schedule.notes}</p>
+            ) : (
+              <div className="space-y-2">
+                <div>
+                  <p className="font-semibold mb-1">From Campus:</p>
+                  <p>{schedule.notes.out}</p>
+                </div>
+                <div>
+                  <p className="font-semibold mb-1">To Campus:</p>
+                  <p>{schedule.notes.in}</p>
+                </div>
+              </div>
+            )}
           </div>
         )}
         <div className="p-4">
