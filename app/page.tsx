@@ -30,8 +30,19 @@ export default function Home() {
   const [scheduleType, setScheduleType] = useState<ScheduleType>("weekday")
   const [isFriday, setIsFriday] = useState(false)
   const [isBuggy, setIsBuggy] = useState(true)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    // Set mounted to true after component mounts on client
+    setMounted(true)
+    
+    // Initialize time and schedule type immediately
+    const now = new Date()
+    setCurrentTime(now)
+    setScheduleType(getScheduleType(now))
+    setIsFriday(now.getDay() === 5)
+
+    // Then update every second
     const timer = setInterval(() => {
       const now = new Date()
       setCurrentTime(now)
@@ -42,13 +53,14 @@ export default function Home() {
     return () => clearInterval(timer)
   }, [])
 
-  const buggyNextArrival = getBuggyNextArrival(selectedStop, currentTime, isFriday)
-  const buggyArrivalTimes = getBuggyArrivalTimes(selectedStop, isFriday)
+  // Only calculate schedules after component is mounted to avoid SSR/hydration mismatches
+  const buggyNextArrival = mounted ? getBuggyNextArrival(selectedStop, currentTime, isFriday) : null
+  const buggyArrivalTimes = mounted ? getBuggyArrivalTimes(selectedStop, isFriday) : []
 
-  const busOutSchedule = getBusSchedule(selectedDestination, scheduleType, "out")
-  const busInSchedule = getBusSchedule(selectedDestination, scheduleType, "in")
-  const busNextDepartureOut = getBusNextDeparture(selectedDestination, scheduleType, "out", currentTime)
-  const busNextDepartureIn = getBusNextDeparture(selectedDestination, scheduleType, "in", currentTime)
+  const busOutSchedule = mounted ? getBusSchedule(selectedDestination, scheduleType, "out") : []
+  const busInSchedule = mounted ? getBusSchedule(selectedDestination, scheduleType, "in") : []
+  const busNextDepartureOut = mounted ? getBusNextDeparture(selectedDestination, scheduleType, "out", currentTime) : null
+  const busNextDepartureIn = mounted ? getBusNextDeparture(selectedDestination, scheduleType, "in", currentTime) : null
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-start p-2 sm:p-4 md:p-6 bg-gray-100">
@@ -159,7 +171,7 @@ export default function Home() {
                     direction={selectedDirection}
                     schedule={selectedDirection === "out" ? busOutSchedule : busInSchedule}
                     nextDeparture={selectedDirection === "out" ? busNextDepartureOut : busNextDepartureIn}
-                    notes={busSchedule[selectedDestination].notes}
+                    notes={busSchedule[selectedDestination as keyof typeof busSchedule].notes}
                     scheduleType={scheduleType}
                     currentTime={currentTime}
                   />
