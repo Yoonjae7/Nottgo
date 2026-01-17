@@ -2,7 +2,7 @@ import { Analytics } from "@vercel/analytics/react"
 import { Suspense } from "react"
 import type React from "react"
 import Script from "next/script"
-import './globals.css'
+import "./globals.css"
 
 export const metadata = {
   generator: 'v0.dev'
