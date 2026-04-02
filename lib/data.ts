@@ -32,7 +32,7 @@ export interface ScheduleEntry {
 
 export const busDestinations = [
   { id: "TBS", name: "TBS (Ter. Bersepadu Selatan)" },
-  { id: "KajangMRT", name: "Kajang MRT Station" },
+  { id: "KajangMRT", name: "Kajang MRT Station (Gate A)" },
   { id: "TTS", name: "TTS (Taman Tasik Semenyih)" },
   { id: "LOTUS", name: "LOTUS, Semenyih" },
   { id: "MosqueAlItt", name: "Al-Itt'd Mosque, TTS (Friday Only)" },

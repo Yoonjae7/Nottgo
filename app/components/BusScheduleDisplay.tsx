@@ -43,6 +43,10 @@ export default function BusScheduleDisplay({
     if (diffMs <= 0) return "Soon"
     if (diffMs <= 60_000) return "Soon"
     const mins = Math.ceil(diffMs / 60_000)
+    if (mins >= 60) {
+      const hours = Math.max(1, Math.round(diffMs / 3_600_000))
+      return hours === 1 ? "In 1 hour" : `In ${hours} hours`
+    }
     return `In ${mins} minutes`
   })()
 

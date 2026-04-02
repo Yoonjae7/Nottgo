@@ -2,7 +2,13 @@ import { Analytics } from "@vercel/analytics/react"
 import { Suspense } from "react"
 import type React from "react"
 import Script from "next/script"
+import { Plus_Jakarta_Sans } from "next/font/google"
 import "./globals.css"
+
+const fontSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+})
 
 export const metadata = {
   generator: 'v0.dev'
@@ -15,7 +21,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>
+      <body className={fontSans.className}>
         <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading...</div>}>
           {children}
         </Suspense>

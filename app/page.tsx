@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react"
 import { format } from "date-fns"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { BusFront, CarFront } from "lucide-react"
+import { cn } from "@/lib/utils"
 import {
   buggyStops,
   busDestinations,
@@ -63,28 +65,78 @@ export default function Home() {
   const busNextDepartureIn = mounted ? getBusNextDeparture(selectedDestination, scheduleType, "in", currentTime) : null
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-start p-2 sm:p-4 md:p-6 bg-gray-100">
-      <Card className="w-full max-w-[95%] sm:max-w-md">
-        <CardHeader>
-          <CardTitle className="text-xl sm:text-2xl">Campus Shuttle System</CardTitle>
+    <main className="relative flex min-h-screen flex-col items-center justify-start px-3 py-6 sm:px-4 sm:py-8 md:px-6">
+      <div
+        className="pointer-events-none fixed inset-0 -z-10 bg-gradient-to-b from-slate-100 via-sky-50/80 to-emerald-50/60 dark:from-slate-950 dark:via-slate-900 dark:to-emerald-950/40"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none fixed -right-24 top-0 h-72 w-72 rounded-full bg-sky-200/35 blur-3xl dark:bg-sky-600/20"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none fixed -left-20 bottom-0 h-80 w-80 rounded-full bg-emerald-200/30 blur-3xl dark:bg-emerald-700/15"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none fixed left-1/2 top-24 h-48 w-[min(100%,28rem)] -translate-x-1/2 rounded-full bg-primary/[0.07] blur-3xl dark:bg-primary/10"
+        aria-hidden
+      />
+
+      <Card className="relative w-full max-w-[95%] sm:max-w-md rounded-2xl border-border/60 bg-card/85 shadow-xl shadow-slate-300/25 ring-1 ring-slate-200/70 backdrop-blur-md dark:bg-card/90 dark:shadow-black/40 dark:ring-white/10">
+        <CardHeader className="border-b border-border/50 bg-gradient-to-br from-card via-card to-primary/[0.06] pb-5 dark:to-primary/10">
+          <CardTitle className="text-xl font-bold tracking-tight sm:text-2xl">Campus Shuttle</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="space-y-4">
-            <div className="flex justify-center space-x-2">
-              <Button
+            <div
+              className="relative flex w-full rounded-2xl border border-border/60 bg-muted/60 p-1 shadow-sm sm:mx-auto sm:max-w-sm"
+              role="tablist"
+              aria-label="Choose shuttle type"
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  "pointer-events-none absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-xl bg-background shadow-md ring-1 ring-black/5 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none dark:ring-white/10",
+                  isBuggy ? "translate-x-full" : "translate-x-0",
+                )}
+              />
+              <button
+                type="button"
+                role="tab"
+                aria-selected={!isBuggy}
                 onClick={() => setIsBuggy(false)}
-                variant={!isBuggy ? "default" : "outline"}
-                className="w-full sm:w-auto"
+                className={cn(
+                  "relative z-10 flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-200",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                  !isBuggy ? "text-foreground" : "text-muted-foreground hover:text-foreground/80",
+                )}
               >
-                Bus
-              </Button>
-              <Button
+                <BusFront
+                  className={cn("h-5 w-5 shrink-0 transition-transform duration-200", !isBuggy && "scale-105")}
+                  strokeWidth={!isBuggy ? 2.25 : 2}
+                  aria-hidden
+                />
+                <span>Bus</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={isBuggy}
                 onClick={() => setIsBuggy(true)}
-                variant={isBuggy ? "default" : "outline"}
-                className="w-full sm:w-auto"
+                className={cn(
+                  "relative z-10 flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-200",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                  isBuggy ? "text-foreground" : "text-muted-foreground hover:text-foreground/80",
+                )}
               >
-                Buggy
-              </Button>
+                <CarFront
+                  className={cn("h-5 w-5 shrink-0 transition-transform duration-200", isBuggy && "scale-105")}
+                  strokeWidth={isBuggy ? 2.25 : 2}
+                  aria-hidden
+                />
+                <span>Buggy</span>
+              </button>
             </div>
 
             {isBuggy ? (
