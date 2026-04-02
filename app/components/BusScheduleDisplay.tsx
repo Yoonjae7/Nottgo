@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { busDestinations } from "@/lib/data"
 import { Badge } from "@/components/ui/badge"
-import { format } from "date-fns"
+import { format, parse } from "date-fns"
 import type { ScheduleType, ScheduleEntry } from "@/lib/data"
 
 interface BusScheduleDisplayProps {
@@ -35,6 +35,16 @@ export default function BusScheduleDisplay({
   const routeLabel = direction === "out" 
     ? `Campus → ${destinationName}` 
     : `${destinationName} → Campus`
+
+  const arrivalCountdownLabel = (() => {
+    if (!nextDeparture) return null
+    const departureAt = parse(nextDeparture, "HH:mm", currentTime)
+    const diffMs = departureAt.getTime() - currentTime.getTime()
+    if (diffMs <= 0) return "Soon"
+    if (diffMs <= 60_000) return "Soon"
+    const mins = Math.ceil(diffMs / 60_000)
+    return `In ${mins} minutes`
+  })()
 
   // Check if a time has passed
   const isTimePassed = (timeString: string): boolean => {
@@ -74,6 +84,16 @@ export default function BusScheduleDisplay({
               {nextDeparture || "No more departures today"}
             </div>
           </div>
+          {arrivalCountdownLabel !== null && (
+            <div className="flex items-center justify-between border-t pt-2">
+              <CardDescription className="text-sm text-gray-600">
+                Arrives:
+              </CardDescription>
+              <div className="text-lg font-semibold text-primary" suppressHydrationWarning>
+                {arrivalCountdownLabel}
+              </div>
+            </div>
+          )}
           <div className="flex items-center justify-between border-t pt-2">
             <CardDescription className="text-sm text-gray-600">
               Current Time: 

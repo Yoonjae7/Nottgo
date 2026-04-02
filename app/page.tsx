@@ -29,7 +29,7 @@ export default function Home() {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [scheduleType, setScheduleType] = useState<ScheduleType>("weekday")
   const [isFriday, setIsFriday] = useState(false)
-  const [isBuggy, setIsBuggy] = useState(true)
+  const [isBuggy, setIsBuggy] = useState(false)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -72,18 +72,18 @@ export default function Home() {
           <div className="space-y-4">
             <div className="flex justify-center space-x-2">
               <Button
-                onClick={() => setIsBuggy(true)}
-                variant={isBuggy ? "default" : "outline"}
-                className="w-full sm:w-auto"
-              >
-                Buggy
-              </Button>
-              <Button
                 onClick={() => setIsBuggy(false)}
                 variant={!isBuggy ? "default" : "outline"}
                 className="w-full sm:w-auto"
               >
                 Bus
+              </Button>
+              <Button
+                onClick={() => setIsBuggy(true)}
+                variant={isBuggy ? "default" : "outline"}
+                className="w-full sm:w-auto"
+              >
+                Buggy
               </Button>
             </div>
 
