@@ -1,9 +1,11 @@
-import { Analytics } from "@vercel/analytics/react"
 import { Suspense } from "react"
 import type React from "react"
 import Script from "next/script"
 import { Plus_Jakarta_Sans } from "next/font/google"
+import { GoogleAnalytics } from "@/components/GoogleAnalytics"
 import "./globals.css"
+
+const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? ""
 
 const fontSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -25,7 +27,7 @@ export default function RootLayout({
         <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading...</div>}>
           {children}
         </Suspense>
-        <Analytics />
+        <GoogleAnalytics measurementId={gaMeasurementId} />
         <Script id="tawk-script" strategy="lazyOnload">
           {`
             var Tawk_API=Tawk_API||{};
