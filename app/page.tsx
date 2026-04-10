@@ -22,6 +22,7 @@ import BuggyScheduleDisplay from "./components/BuggyScheduleDisplay"
 import BusScheduleDisplay from "./components/BusScheduleDisplay"
 import FullBuggySchedule from "./components/FullBuggySchedule"
 import FullBusSchedule from "./components/FullBusSchedule"
+import LiveBusLocation from "./components/LiveBusLocation"
 
 export default function Home() {
   const [selectedStop, setSelectedStop] = useState<number>(0)
@@ -236,6 +237,7 @@ export default function Home() {
                     </CardContent>
                   </Card>
                 )}
+                {!isBuggy && !showFullSchedule && <LiveBusLocation />}
                 <Button onClick={() => setShowFullSchedule(true)} variant="outline" className="w-full text-sm">
                   View Full Schedule
                 </Button>
