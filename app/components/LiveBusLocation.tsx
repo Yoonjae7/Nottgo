@@ -45,7 +45,17 @@ export default function LiveBusLocation() {
     const timeoutId = window.setTimeout(() => ac.abort(), CLIENT_FETCH_MS)
     try {
       const res = await fetch("/api/bus-location", { cache: "no-store", signal: ac.signal })
-      const json = (await res.json()) as Payload
+      const text = await res.text()
+      let json: Payload
+      try {
+        json = text ? (JSON.parse(text) as Payload) : { ok: false, error: "Empty response from server" }
+      } catch {
+        setData({
+          ok: false,
+          error: `Server returned non-JSON (${res.status}). Try restarting dev: pnpm dev:clean`,
+        })
+        return
+      }
       setData(json)
     } catch (e) {
       const aborted = e instanceof Error && e.name === "AbortError"

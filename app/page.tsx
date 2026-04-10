@@ -22,6 +22,7 @@ import BuggyScheduleDisplay from "./components/BuggyScheduleDisplay"
 import BusScheduleDisplay from "./components/BusScheduleDisplay"
 import FullBuggySchedule from "./components/FullBuggySchedule"
 import FullBusSchedule from "./components/FullBusSchedule"
+import LiveBusErrorBoundary from "./components/LiveBusErrorBoundary"
 import LiveBusLocation from "./components/LiveBusLocation"
 
 export default function Home() {
@@ -237,7 +238,11 @@ export default function Home() {
                     </CardContent>
                   </Card>
                 )}
-                {!isBuggy && !showFullSchedule && <LiveBusLocation />}
+                {!isBuggy && !showFullSchedule && (
+                  <LiveBusErrorBoundary>
+                    <LiveBusLocation />
+                  </LiveBusErrorBoundary>
+                )}
                 <Button onClick={() => setShowFullSchedule(true)} variant="outline" className="w-full text-sm">
                   View Full Schedule
                 </Button>
