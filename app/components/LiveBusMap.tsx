@@ -1,7 +1,9 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { GoogleMap, useJsApiLoader } from "@react-google-maps/api"
+import { useEffect, useMemo, useRef } from "react"
+import { MapContainer, TileLayer, useMap } from "react-leaflet"
+import L from "leaflet"
+import "leaflet/dist/leaflet.css"
 
 type Point = {
   carNumber: string
@@ -11,9 +13,8 @@ type Point = {
 }
 
 const SLIDE_MS = 900
-const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""
 
-/* ---------- SVG marker icon (green = running, grey = engine off) ---------- */
+/* ---------- SVG marker (green = running, grey = engine off) ---------- */
 
 function escapeXml(s: string): string {
   return s
@@ -22,10 +23,6 @@ function escapeXml(s: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&apos;")
-}
-
-function isEngineOff(status: number | null): boolean {
-  return status === 2 || status === 3
 }
 
 function buildBusIconSvg(plate: string, off: boolean): string {
@@ -59,82 +56,64 @@ function buildBusIconSvg(plate: string, off: boolean): string {
 </svg>`
 }
 
-function busIconDataUrl(plate: string, off: boolean): string {
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(buildBusIconSvg(plate, off))}`
+function createBusIcon(plate: string, off: boolean): L.Icon {
+  const url = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(buildBusIconSvg(plate, off))}`
+  return L.icon({
+    iconUrl: url,
+    iconSize: [64, 80],
+    iconAnchor: [32, 70],
+    popupAnchor: [0, -70],
+  })
 }
 
-function makeGIcon(url: string): google.maps.Icon {
-  return {
-    url,
-    scaledSize: new google.maps.Size(64, 80),
-    anchor: new google.maps.Point(32, 70),
-  }
+function isEngineOff(status: number | null): boolean {
+  return status === 2 || status === 3
 }
 
 /* ---------- Animated marker (rAF interpolation at 60 fps) ---------- */
 
-function SlidingBusMarker({
-  map,
-  lat,
-  lng,
-  plate,
-  off,
-}: {
-  map: google.maps.Map
-  lat: number
-  lng: number
-  plate: string
-  off: boolean
-}) {
-  const markerRef = useRef<google.maps.Marker | null>(null)
+function SlidingMarker({ lat, lng, icon }: { lat: number; lng: number; icon: L.Icon }) {
+  const map = useMap()
+  const markerRef = useRef<L.Marker | null>(null)
   const rafRef = useRef(0)
-  const iconUrl = useMemo(() => busIconDataUrl(plate, off), [plate, off])
-  const iconUrlRef = useRef(iconUrl)
-  iconUrlRef.current = iconUrl
+  const iconRef = useRef(icon)
+  iconRef.current = icon
 
   useEffect(() => {
     if (!markerRef.current) {
-      markerRef.current = new google.maps.Marker({
-        map,
-        position: { lat, lng },
-        icon: makeGIcon(iconUrlRef.current),
-        optimized: false,
-      })
-      map.setCenter({ lat, lng })
-      map.setZoom(16)
+      markerRef.current = L.marker([lat, lng], { icon: iconRef.current }).addTo(map)
+      map.setView([lat, lng], 16, { animate: false })
       return
     }
 
     cancelAnimationFrame(rafRef.current)
     const marker = markerRef.current
-    const pos = marker.getPosition()
-    if (!pos) return
-    const fLat = pos.lat()
-    const fLng = pos.lng()
-    if (fLat === lat && fLng === lng) return
+    const from = marker.getLatLng()
+    const to = L.latLng(lat, lng)
+    if (from.equals(to)) return
 
     const t0 = performance.now()
     const step = (now: number) => {
       const p = Math.min((now - t0) / SLIDE_MS, 1)
-      marker.setPosition({
-        lat: fLat + (lat - fLat) * p,
-        lng: fLng + (lng - fLng) * p,
-      })
+      marker.setLatLng([
+        from.lat + (to.lat - from.lat) * p,
+        from.lng + (to.lng - from.lng) * p,
+      ])
       if (p < 1) rafRef.current = requestAnimationFrame(step)
     }
     rafRef.current = requestAnimationFrame(step)
 
-    map.panTo({ lat, lng })
+    map.panTo(to, { animate: true, duration: SLIDE_MS / 1000 })
   }, [map, lat, lng])
 
   useEffect(() => {
-    markerRef.current?.setIcon(makeGIcon(iconUrl))
-  }, [iconUrl])
+    markerRef.current?.setIcon(icon)
+  }, [icon])
 
   useEffect(
     () => () => {
       cancelAnimationFrame(rafRef.current)
-      markerRef.current?.setMap(null)
+      markerRef.current?.remove()
     },
     [],
   )
@@ -142,7 +121,7 @@ function SlidingBusMarker({
   return null
 }
 
-/* ---------- Main map component ---------- */
+/* ---------- Main component ---------- */
 
 type Props = {
   vehicles: Point[]
@@ -150,48 +129,11 @@ type Props = {
 }
 
 export default function LiveBusMap({ vehicles, trackKey }: Props) {
-  const { isLoaded, loadError } = useJsApiLoader({ googleMapsApiKey: API_KEY })
-  const [map, setMap] = useState<google.maps.Map | null>(null)
-
   const v = vehicles.length === 1 ? vehicles[0] : null
   const off = v ? isEngineOff(v.status) : false
+  const icon = useMemo(() => (v ? createBusIcon(v.carNumber, off) : null), [v?.carNumber, off])
 
-  const onLoad = useCallback((m: google.maps.Map) => setMap(m), [])
-  const onUnmount = useCallback(() => setMap(null), [])
-  const [defaultCenter] = useState({ lat: 2.95, lng: 101.85 })
-
-  if (!API_KEY) {
-    return (
-      <div className="flex h-[200px] items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 px-4 text-center text-xs text-muted-foreground">
-        <p>
-          Add{" "}
-          <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">
-            NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-          </code>{" "}
-          to <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">.env.local</code> to
-          enable the map.
-        </p>
-      </div>
-    )
-  }
-
-  if (loadError) {
-    return (
-      <div className="flex h-[200px] items-center justify-center rounded-xl border border-dashed border-red-200 bg-red-50/50 px-4 text-center text-xs text-red-600 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-400">
-        Failed to load Google Maps — check your API key and billing.
-      </div>
-    )
-  }
-
-  if (!isLoaded) {
-    return (
-      <div className="flex h-[200px] items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 text-xs text-muted-foreground">
-        Loading map…
-      </div>
-    )
-  }
-
-  if (!v) {
+  if (!v || !icon) {
     return (
       <p className="rounded-lg border border-dashed border-border/80 bg-muted/30 px-3 py-8 text-center text-xs text-muted-foreground">
         No GPS fix for this bus right now. It may be offline or not reporting.
@@ -200,27 +142,28 @@ export default function LiveBusMap({ vehicles, trackKey }: Props) {
   }
 
   return (
-    <div className="relative z-0 h-[min(360px,58vh)] w-full overflow-hidden rounded-xl shadow-sm">
-      <GoogleMap
-        mapContainerStyle={{ height: "100%", width: "100%" }}
-        center={defaultCenter}
+    <div className="relative z-0 h-[min(360px,58vh)] w-full overflow-hidden rounded-xl border border-border/60 shadow-sm">
+      <MapContainer
+        key={trackKey}
+        center={[v.lat, v.lng]}
         zoom={16}
-        options={{
-          disableDefaultUI: true,
-          gestureHandling: "greedy",
-          clickableIcons: false,
-          styles: [
-            { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
-            { featureType: "transit", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-          ],
-        }}
-        onLoad={onLoad}
-        onUnmount={onUnmount}
+        zoomControl={false}
+        className="h-full w-full [&_.leaflet-control-attribution]:text-[10px]"
+        scrollWheelZoom
+        doubleClickZoom
+        dragging
+        touchZoom
+        boxZoom
+        keyboard
       >
-        {map && (
-          <SlidingBusMarker key={trackKey} map={map} lat={v.lat} lng={v.lng} plate={v.carNumber} off={off} />
-        )}
-      </GoogleMap>
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
+          subdomains="abcd"
+          maxZoom={20}
+        />
+        <SlidingMarker lat={v.lat} lng={v.lng} icon={icon} />
+      </MapContainer>
     </div>
   )
 }
