@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useMemo } from "react"
-import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet"
+import { useEffect, useMemo, useRef } from "react"
+import { MapContainer, Marker, TileLayer, useMap, ZoomControl } from "react-leaflet"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 
@@ -15,7 +15,6 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;")
 }
 
-/** Front-facing bus SVG + plate label + GPS dot (similar to Eup fleet UI) */
 function createBusMarkerIcon(plate: string): L.DivIcon {
   const safe = escapeHtml(plate)
   const html = `
@@ -44,66 +43,73 @@ function createBusMarkerIcon(plate: string): L.DivIcon {
   })
 }
 
-function FitBounds({ points }: { points: [number, number][] }) {
+/** First view fits bus; later polls only pan — user zoom is preserved */
+function FollowSelectedBus({ position }: { position: [number, number] }) {
   const map = useMap()
+  const first = useRef(true)
+
   useEffect(() => {
-    if (points.length === 0) return
-    if (points.length === 1) {
-      map.setView(points[0], 15)
+    if (first.current) {
+      map.setView(position, 15, { animate: false })
+      first.current = false
       return
     }
-    const bounds = L.latLngBounds(points)
-    map.fitBounds(bounds, { padding: [48, 48], maxZoom: 16 })
-  }, [map, points])
+    map.panTo(position, { animate: true, duration: 0.5 })
+  }, [map, position[0], position[1]])
+
   return null
 }
 
-export default function LiveBusMap({ vehicles }: { vehicles: Point[] }) {
-  const { points, center, markers } = useMemo(() => {
-    const pts: [number, number][] = []
-    const mk: { key: string; position: [number, number]; icon: L.DivIcon }[] = []
-    for (const v of vehicles) {
-      pts.push([v.lat, v.lng])
-      mk.push({
-        key: v.carNumber,
-        position: [v.lat, v.lng],
-        icon: createBusMarkerIcon(v.carNumber),
-      })
+type Props = {
+  /** Single bus to show and track (empty = no marker) */
+  vehicles: Point[]
+  /** Remount map when switching bus so initial framing resets */
+  trackKey: string
+}
+
+export default function LiveBusMap({ vehicles, trackKey }: Props) {
+  const marker = useMemo(() => {
+    if (vehicles.length !== 1) return null
+    const v = vehicles[0]
+    return {
+      key: v.carNumber,
+      position: [v.lat, v.lng] as [number, number],
+      icon: createBusMarkerIcon(v.carNumber),
     }
-    const c: [number, number] =
-      pts.length > 0
-        ? [
-            pts.reduce((s, p) => s + p[0], 0) / pts.length,
-            pts.reduce((s, p) => s + p[1], 0) / pts.length,
-          ]
-        : [2.95, 101.85]
-    return { points: pts, center: c, markers: mk }
   }, [vehicles])
+
+  const center: [number, number] =
+    vehicles.length === 1 ? [vehicles[0].lat, vehicles[0].lng] : [2.95, 101.85]
 
   if (vehicles.length === 0) {
     return (
-      <p className="text-xs text-muted-foreground rounded-lg border border-dashed border-border/80 bg-muted/30 px-3 py-6 text-center">
-        No GPS coordinates yet for any bus (offline or no fix). List below may still show status.
+      <p className="text-xs text-muted-foreground rounded-lg border border-dashed border-border/80 bg-muted/30 px-3 py-8 text-center">
+        No GPS fix for this bus right now. It may be offline or not reporting.
       </p>
     )
   }
 
   return (
-    <div className="relative z-0 h-[min(340px,55vh)] w-full overflow-hidden rounded-xl border border-border/60 shadow-sm">
+    <div className="relative z-0 h-[min(360px,58vh)] w-full overflow-hidden rounded-xl border border-border/60 shadow-sm">
       <MapContainer
+        key={trackKey}
         center={center}
-        zoom={14}
-        className="h-full w-full [&_.leaflet-control-attribution]:text-[10px]"
+        zoom={15}
+        className="h-full w-full [&_.leaflet-control-attribution]:text-[10px] [&_.leaflet-top.leaflet-right]:mt-2"
         scrollWheelZoom
+        doubleClickZoom
+        dragging
+        touchZoom
+        boxZoom
+        keyboard
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <FitBounds points={points} />
-        {markers.map((m) => (
-          <Marker key={m.key} position={m.position} icon={m.icon} />
-        ))}
+        <ZoomControl position="topright" />
+        <FollowSelectedBus position={marker.position} />
+        <Marker position={marker.position} icon={marker.icon} />
       </MapContainer>
     </div>
   )

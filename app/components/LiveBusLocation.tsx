@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { MapPin, RefreshCw } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 const LiveBusMap = dynamic(() => import("./LiveBusMap"), {
   ssr: false,
@@ -46,13 +47,13 @@ type ErrPayload = {
 type Payload = OkPayload | ErrPayload
 
 const POLL_MS = 45_000
-/** Multiple parallel Eup calls — allow extra time */
 const CLIENT_FETCH_MS = 55_000
 
 export default function LiveBusLocation() {
   const [data, setData] = useState<Payload | null>(null)
   const [loading, setLoading] = useState(true)
   const [lastFetch, setLastFetch] = useState<Date | null>(null)
+  const [selectedPlate, setSelectedPlate] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -93,22 +94,28 @@ export default function LiveBusLocation() {
     return () => clearInterval(id)
   }, [load])
 
+  useEffect(() => {
+    if (!data || !data.ok) return
+    const ids = data.vehicles.map((v) => v.carNumber)
+    setSelectedPlate((prev) => {
+      if (prev && ids.includes(prev)) return prev
+      return ids[0] ?? null
+    })
+  }, [data])
+
   if (loading && data === null) {
     return (
       <Card className="w-full border-dashed pointer-events-auto">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <MapPin className="h-4 w-4" aria-hidden />
-            Live bus positions
+            Live bus
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-1">
           <p className="text-sm text-muted-foreground">Loading buses from Eup…</p>
           <p className="text-xs text-muted-foreground/90">
-            With several plates this can take 20–40s. If this never finishes, check the browser Network tab
-            for <code className="rounded bg-muted px-1">/api/bus-location</code> and confirm{" "}
-            <code className="rounded bg-muted px-1">EUP_TOKEN</code> /{" "}
-            <code className="rounded bg-muted px-1">EUP_CAR_NUMBER</code> on Vercel (Production) and redeploy.
+            Several plates can take 20–40s. Check Network → <code className="rounded bg-muted px-1">/api/bus-location</code> if this hangs.
           </p>
         </CardContent>
       </Card>
@@ -122,7 +129,7 @@ export default function LiveBusLocation() {
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <MapPin className="h-4 w-4" aria-hidden />
-            Live bus positions
+            Live bus
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
@@ -137,17 +144,39 @@ export default function LiveBusLocation() {
   }
 
   const { vehicles } = data as OkPayload
-  const mapPoints = vehicles
-    .filter((v) => v.lat != null && v.lng != null && !v.error)
-    .map((v) => ({ carNumber: v.carNumber, lat: v.lat!, lng: v.lng! }))
+  const selected = vehicles.find((v) => v.carNumber === selectedPlate)
+  const mapSlice =
+    selected &&
+    selected.lat != null &&
+    selected.lng != null &&
+    !selected.error &&
+    !selected.empty
+      ? [{ carNumber: selected.carNumber, lat: selected.lat, lng: selected.lng }]
+      : []
+
+  let caption: string | null = null
+  if (selected) {
+    if (selected.error) caption = selected.error
+    else if (selected.empty || selected.lat == null)
+      caption = selected.message ?? "No GPS for this bus right now."
+    else
+      caption =
+        [
+          selected.logDTime && `Last fix ${selected.logDTime}`,
+          selected.logSpeed != null && `${selected.logSpeed} km/h`,
+          selected.statusLabel,
+        ]
+          .filter(Boolean)
+          .join(" · ") || null
+  }
 
   return (
     <Card className="w-full">
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <MapPin className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-            Live bus positions
+            Live bus
           </CardTitle>
           <Button
             type="button"
@@ -161,70 +190,35 @@ export default function LiveBusLocation() {
             Refresh
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground">{vehicles.length} vehicle(s)</p>
+        <p className="text-xs text-muted-foreground">Choose a bus to track on the map.</p>
       </CardHeader>
-      <CardContent className="space-y-0 text-sm">
-        <div className="mb-4 space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">Map</p>
-          <LiveBusMap vehicles={mapPoints} />
+      <CardContent className="space-y-3 text-sm">
+        <div className="flex flex-wrap gap-2">
+          {vehicles.map((v) => (
+            <Button
+              key={v.carNumber}
+              type="button"
+              size="sm"
+              variant={selectedPlate === v.carNumber ? "default" : "outline"}
+              className={cn("font-mono text-xs", selectedPlate === v.carNumber && "shadow-sm")}
+              onClick={() => setSelectedPlate(v.carNumber)}
+            >
+              {v.carNumber}
+            </Button>
+          ))}
         </div>
-        <p className="mb-2 text-xs font-medium text-muted-foreground">Details</p>
-        {vehicles.map((v, i) => (
-          <div
-            key={v.carNumber}
-            className={
-              i > 0 ? "border-t border-border/60 pt-3 mt-3 space-y-2" : "space-y-2 pb-1"
-            }
-          >
-            <p className="font-semibold text-foreground">{v.carNumber}</p>
-            {v.error ? (
-              <p className="text-xs text-destructive/90">{v.error}</p>
-            ) : v.empty ? (
-              <p className="text-xs text-muted-foreground">
-                {v.message ?? "No live data right now."}
-              </p>
-            ) : (
-              <>
-                {v.lat != null && v.lng != null && (
-                  <p className="text-xs">
-                    <span className="text-muted-foreground">Coords: </span>
-                    {v.lat.toFixed(5)}, {v.lng.toFixed(5)}
-                  </p>
-                )}
-                {v.address && (
-                  <p className="text-xs">
-                    <span className="text-muted-foreground">Address: </span>
-                    {v.address}
-                  </p>
-                )}
-                {v.roadName && !v.address && (
-                  <p className="text-xs">
-                    <span className="text-muted-foreground">Road: </span>
-                    {v.roadName}
-                  </p>
-                )}
-                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
-                  {v.logDTime && <span>Last fix: {v.logDTime}</span>}
-                  {v.logSpeed != null && <span>{v.logSpeed} km/h</span>}
-                  {v.statusLabel && <span>{v.statusLabel}</span>}
-                </div>
-                {v.lat != null && v.lng != null && (
-                  <a
-                    href={`https://www.openstreetmap.org/?mlat=${v.lat}&mlon=${v.lng}#map=16/${v.lat}/${v.lng}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex text-xs font-medium text-primary underline-offset-4 hover:underline"
-                  >
-                    Open on map
-                  </a>
-                )}
-              </>
-            )}
-          </div>
-        ))}
+
+        {selectedPlate && (
+          <LiveBusMap vehicles={mapSlice} trackKey={selectedPlate} />
+        )}
+
+        {selectedPlate && caption && (
+          <p className="text-center text-[11px] text-muted-foreground">{caption}</p>
+        )}
+
         {lastFetch && (
-          <p className="mt-3 text-[10px] text-muted-foreground/80 border-t border-border/40 pt-2">
-            Updated {lastFetch.toLocaleTimeString()} · auto-refresh every {POLL_MS / 1000}s
+          <p className="text-center text-[10px] text-muted-foreground/80">
+            Updated {lastFetch.toLocaleTimeString()} · refresh every {POLL_MS / 1000}s
           </p>
         )}
       </CardContent>
