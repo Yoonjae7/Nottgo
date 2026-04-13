@@ -68,7 +68,14 @@ function isEngineOff(status: number | null): boolean {
   return status === 2 || status === 3
 }
 
-/* ---------- Animated marker (rAF interpolation at 60 fps) ---------- */
+/* ---------- Velocity-extrapolating marker (dead reckoning at 60 fps) ---- */
+
+/** Smoothing factor per 16.67 ms frame — higher = snappier correction */
+const SMOOTHING = 0.12
+/** Stop extrapolating after this long without a new GPS fix */
+const MAX_EXTRAPOLATE_MS = 5_000
+/** Minimum speed (deg/ms) to count as moving — below this is GPS noise */
+const MIN_SPEED = 1e-9
 
 function SlidingMarker({ lat, lng, icon }: { lat: number; lng: number; icon: L.Icon }) {
   const map = useMap()
@@ -76,40 +83,83 @@ function SlidingMarker({ lat, lng, icon }: { lat: number; lng: number; icon: L.I
   const rafRef = useRef(0)
   const iconRef = useRef(icon)
   iconRef.current = icon
-  const lastMoveRef = useRef(0)
+
+  const fixesRef = useRef<{ lat: number; lng: number; t: number }[]>([])
+  const velRef = useRef({ lat: 0, lng: 0 })
+  const targetRef = useRef({ lat, lng, t: performance.now() })
+  const lastFrameRef = useRef(performance.now())
+  const lastPanRef = useRef(0)
+  const loopingRef = useRef(false)
+
+  const startLoop = () => {
+    if (loopingRef.current) return
+    loopingRef.current = true
+
+    const tick = (now: number) => {
+      const marker = markerRef.current
+      if (!marker || !loopingRef.current) { loopingRef.current = false; return }
+
+      const dt = Math.min(now - lastFrameRef.current, 100)
+      lastFrameRef.current = now
+
+      const target = targetRef.current
+      const vel = velRef.current
+      const elapsed = Math.min(now - target.t, MAX_EXTRAPOLATE_MS)
+
+      const pLat = target.lat + vel.lat * elapsed
+      const pLng = target.lng + vel.lng * elapsed
+
+      const alpha = 1 - Math.pow(1 - SMOOTHING, dt / 16.67)
+      const pos = marker.getLatLng()
+      const nextLat = pos.lat + (pLat - pos.lat) * alpha
+      const nextLng = pos.lng + (pLng - pos.lng) * alpha
+      marker.setLatLng([nextLat, nextLng])
+
+      if (now - lastPanRef.current > 800) {
+        lastPanRef.current = now
+        map.panTo([nextLat, nextLng], { animate: true, duration: 0.6 })
+      }
+
+      rafRef.current = requestAnimationFrame(tick)
+    }
+
+    rafRef.current = requestAnimationFrame(tick)
+  }
 
   useEffect(() => {
+    const now = performance.now()
+
     if (!markerRef.current) {
       markerRef.current = L.marker([lat, lng], { icon: iconRef.current }).addTo(map)
       map.setView([lat, lng], 16, { animate: false })
-      lastMoveRef.current = performance.now()
+      fixesRef.current = [{ lat, lng, t: now }]
+      targetRef.current = { lat, lng, t: now }
+      lastFrameRef.current = now
+      lastPanRef.current = now
+      startLoop()
       return
     }
 
-    cancelAnimationFrame(rafRef.current)
-    const marker = markerRef.current
-    const from = marker.getLatLng()
-    const to = L.latLng(lat, lng)
-    if (from.equals(to)) return
+    const prev = targetRef.current
+    if (lat === prev.lat && lng === prev.lng) return
 
-    const now = performance.now()
-    const gap = now - lastMoveRef.current
-    lastMoveRef.current = now
-    // Fill ~85 % of the real gap so the slide finishes just before the next update
-    const duration = Math.min(Math.max(gap * 0.85, 150), 2000)
+    const fixes = fixesRef.current
+    fixes.push({ lat, lng, t: now })
+    if (fixes.length > 4) fixes.shift()
 
-    const t0 = now
-    const step = (ts: number) => {
-      const p = Math.min((ts - t0) / duration, 1)
-      marker.setLatLng([
-        from.lat + (to.lat - from.lat) * p,
-        from.lng + (to.lng - from.lng) * p,
-      ])
-      if (p < 1) rafRef.current = requestAnimationFrame(step)
+    if (fixes.length >= 2) {
+      const a = fixes[fixes.length - 2]
+      const b = fixes[fixes.length - 1]
+      const dt = b.t - a.t
+      if (dt > 100) {
+        const vLat = (b.lat - a.lat) / dt
+        const vLng = (b.lng - a.lng) / dt
+        const speed = Math.sqrt(vLat * vLat + vLng * vLng)
+        velRef.current = speed > MIN_SPEED ? { lat: vLat, lng: vLng } : { lat: 0, lng: 0 }
+      }
     }
-    rafRef.current = requestAnimationFrame(step)
 
-    map.panTo(to, { animate: true, duration: duration / 1000 })
+    targetRef.current = { lat, lng, t: now }
   }, [map, lat, lng])
 
   useEffect(() => {
@@ -118,6 +168,7 @@ function SlidingMarker({ lat, lng, icon }: { lat: number; lng: number; icon: L.I
 
   useEffect(
     () => () => {
+      loopingRef.current = false
       cancelAnimationFrame(rafRef.current)
       markerRef.current?.remove()
     },
