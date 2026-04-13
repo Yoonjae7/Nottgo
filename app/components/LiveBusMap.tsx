@@ -1,46 +1,74 @@
 "use client"
 
 import { useEffect, useMemo } from "react"
-import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet"
+import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 
 type Point = { carNumber: string; lat: number; lng: number }
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+}
+
+/** Front-facing bus SVG + plate label + GPS dot (similar to Eup fleet UI) */
+function createBusMarkerIcon(plate: string): L.DivIcon {
+  const safe = escapeHtml(plate)
+  const html = `
+<div class="leaflet-bus-map-marker">
+  <div class="leaflet-bus-map-plate">${safe}</div>
+  <div class="leaflet-bus-map-caret" aria-hidden="true"></div>
+  <div class="leaflet-bus-map-icon-wrap">
+    <svg viewBox="0 0 48 52" width="42" height="46" aria-hidden="true" focusable="false">
+      <rect x="5" y="8" width="38" height="32" rx="5" fill="#15803d" stroke="#14532d" stroke-width="0.75"/>
+      <rect x="8" y="11" width="32" height="15" rx="2" fill="#ffffff" opacity="0.98"/>
+      <rect x="8" y="28" width="32" height="9" rx="1.5" fill="#166534"/>
+      <circle cx="17" cy="36" r="2.8" fill="#fef08a" stroke="#854d0e" stroke-width="0.3"/>
+      <circle cx="31" cy="36" r="2.8" fill="#fef08a" stroke="#854d0e" stroke-width="0.3"/>
+      <rect x="20" y="11" width="8" height="3" rx="0.5" fill="#14532d" opacity="0.9"/>
+    </svg>
+    <div class="leaflet-bus-map-dot" title="GPS position"></div>
+  </div>
+</div>`
+
+  return L.divIcon({
+    html,
+    className: "leaflet-bus-map-icon",
+    iconSize: [80, 102],
+    iconAnchor: [40, 102],
+    popupAnchor: [0, -92],
+  })
+}
 
 function FitBounds({ points }: { points: [number, number][] }) {
   const map = useMap()
   useEffect(() => {
     if (points.length === 0) return
     if (points.length === 1) {
-      map.setView(points[0], 14)
+      map.setView(points[0], 15)
       return
     }
     const bounds = L.latLngBounds(points)
-    map.fitBounds(bounds, { padding: [28, 28], maxZoom: 15 })
+    map.fitBounds(bounds, { padding: [48, 48], maxZoom: 16 })
   }, [map, points])
   return null
 }
 
-/** Fix default marker assets when Leaflet is bundled (Next/webpack) */
-function useFixLeafletIcons() {
-  useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Leaflet default icon bundling fix
-    delete (L.Icon.Default.prototype as any)._getIconUrl
-    L.Icon.Default.mergeOptions({
-      iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-      iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-      shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-    })
-  }, [])
-}
-
 export default function LiveBusMap({ vehicles }: { vehicles: Point[] }) {
-  useFixLeafletIcons()
-
-  const { points, center } = useMemo(() => {
+  const { points, center, markers } = useMemo(() => {
     const pts: [number, number][] = []
+    const mk: { key: string; position: [number, number]; icon: L.DivIcon }[] = []
     for (const v of vehicles) {
       pts.push([v.lat, v.lng])
+      mk.push({
+        key: v.carNumber,
+        position: [v.lat, v.lng],
+        icon: createBusMarkerIcon(v.carNumber),
+      })
     }
     const c: [number, number] =
       pts.length > 0
@@ -49,7 +77,7 @@ export default function LiveBusMap({ vehicles }: { vehicles: Point[] }) {
             pts.reduce((s, p) => s + p[1], 0) / pts.length,
           ]
         : [2.95, 101.85]
-    return { points: pts, center: c }
+    return { points: pts, center: c, markers: mk }
   }, [vehicles])
 
   if (vehicles.length === 0) {
@@ -61,10 +89,10 @@ export default function LiveBusMap({ vehicles }: { vehicles: Point[] }) {
   }
 
   return (
-    <div className="relative z-0 h-[min(280px,50vh)] w-full overflow-hidden rounded-xl border border-border/60 shadow-sm">
+    <div className="relative z-0 h-[min(340px,55vh)] w-full overflow-hidden rounded-xl border border-border/60 shadow-sm">
       <MapContainer
         center={center}
-        zoom={13}
+        zoom={14}
         className="h-full w-full [&_.leaflet-control-attribution]:text-[10px]"
         scrollWheelZoom
       >
@@ -73,12 +101,8 @@ export default function LiveBusMap({ vehicles }: { vehicles: Point[] }) {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <FitBounds points={points} />
-        {vehicles.map((v) => (
-          <Marker key={v.carNumber} position={[v.lat, v.lng]}>
-            <Popup>
-              <span className="font-semibold">{v.carNumber}</span>
-            </Popup>
-          </Marker>
+        {markers.map((m) => (
+          <Marker key={m.key} position={m.position} icon={m.icon} />
         ))}
       </MapContainer>
     </div>
