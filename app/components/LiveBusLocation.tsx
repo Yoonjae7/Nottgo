@@ -46,20 +46,21 @@ type ErrPayload = {
 
 type Payload = OkPayload | ErrPayload
 
-/** How often we ask Eup for fresh positions (Eup itself may update ~1s; we poll as fast as is reasonable for serverless + their API) */
-const POLL_MS = 2_000
-const CLIENT_FETCH_MS = 25_000
+const POLL_MS = 1_000
+const CLIENT_FETCH_MS = 15_000
 
 export default function LiveBusLocation() {
   const [data, setData] = useState<Payload | null>(null)
   const [loading, setLoading] = useState(true)
   const [lastFetch, setLastFetch] = useState<Date | null>(null)
   const [selectedPlate, setSelectedPlate] = useState<string | null>(null)
-  /** Plates from last full fleet response — enables fast single-bus polling */
   const plateRosterRef = useRef<string[]>([])
   const showInitialSpinnerRef = useRef(true)
+  const inFlightRef = useRef(false)
 
   const load = useCallback(async () => {
+    if (inFlightRef.current) return
+    inFlightRef.current = true
     if (showInitialSpinnerRef.current) setLoading(true)
     const ac = new AbortController()
     const timeoutId = window.setTimeout(() => ac.abort(), CLIENT_FETCH_MS)
@@ -124,6 +125,7 @@ export default function LiveBusLocation() {
       setLoading(false)
       showInitialSpinnerRef.current = false
       setLastFetch(new Date())
+      inFlightRef.current = false
     }
   }, [selectedPlate])
 

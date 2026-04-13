@@ -1,11 +1,13 @@
 "use client"
 
 import { useEffect, useMemo, useRef } from "react"
-import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet"
+import { MapContainer, TileLayer, useMap } from "react-leaflet"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 
 type Point = { carNumber: string; lat: number; lng: number }
+
+const SLIDE_MS = 900
 
 function escapeHtml(s: string): string {
   return s
@@ -43,45 +45,65 @@ function createBusMarkerIcon(plate: string): L.DivIcon {
   })
 }
 
-/** First view fits bus; later polls only pan — user zoom is preserved */
-function FollowSelectedBus({ position }: { position: [number, number] }) {
+/**
+ * Imperatively managed marker that smoothly glides between GPS positions
+ * via requestAnimationFrame interpolation (60 fps) instead of snapping.
+ * Also pans the map to follow the bus with matching animation duration.
+ */
+function SlidingMarker({ lat, lng, icon }: { lat: number; lng: number; icon: L.DivIcon }) {
   const map = useMap()
-  const first = useRef(true)
+  const markerRef = useRef<L.Marker | null>(null)
+  const rafRef = useRef(0)
 
   useEffect(() => {
-    if (first.current) {
-      map.setView(position, 15, { animate: false })
-      first.current = false
+    if (!markerRef.current) {
+      markerRef.current = L.marker([lat, lng], { icon }).addTo(map)
+      map.setView([lat, lng], 16, { animate: false })
       return
     }
-    map.panTo(position, { animate: true, duration: 0.35 })
-  }, [map, position[0], position[1]])
+
+    cancelAnimationFrame(rafRef.current)
+
+    const marker = markerRef.current
+    const from = marker.getLatLng()
+    const to = L.latLng(lat, lng)
+    if (from.equals(to)) return
+
+    const t0 = performance.now()
+    const step = (now: number) => {
+      const p = Math.min((now - t0) / SLIDE_MS, 1)
+      marker.setLatLng([
+        from.lat + (to.lat - from.lat) * p,
+        from.lng + (to.lng - from.lng) * p,
+      ])
+      if (p < 1) rafRef.current = requestAnimationFrame(step)
+    }
+    rafRef.current = requestAnimationFrame(step)
+
+    map.panTo(to, { animate: true, duration: SLIDE_MS / 1000 })
+  }, [map, lat, lng, icon])
+
+  useEffect(
+    () => () => {
+      cancelAnimationFrame(rafRef.current)
+      markerRef.current?.remove()
+    },
+    [],
+  )
 
   return null
 }
 
 type Props = {
-  /** Single bus to show and track (empty = no marker) */
   vehicles: Point[]
-  /** Remount map when switching bus so initial framing resets */
   trackKey: string
 }
 
 export default function LiveBusMap({ vehicles, trackKey }: Props) {
-  const marker = useMemo(() => {
-    if (vehicles.length !== 1) return null
-    const v = vehicles[0]
-    return {
-      key: v.carNumber,
-      position: [v.lat, v.lng] as [number, number],
-      icon: createBusMarkerIcon(v.carNumber),
-    }
-  }, [vehicles])
+  const v = vehicles.length === 1 ? vehicles[0] : null
+  const icon = useMemo(() => (v ? createBusMarkerIcon(v.carNumber) : null), [v?.carNumber])
 
-  const center: [number, number] =
-    vehicles.length === 1 ? [vehicles[0].lat, vehicles[0].lng] : [2.95, 101.85]
-
-  if (vehicles.length === 0) {
+  if (!v || !icon) {
     return (
       <p className="text-xs text-muted-foreground rounded-lg border border-dashed border-border/80 bg-muted/30 px-3 py-8 text-center">
         No GPS fix for this bus right now. It may be offline or not reporting.
@@ -93,8 +115,8 @@ export default function LiveBusMap({ vehicles, trackKey }: Props) {
     <div className="relative z-0 h-[min(360px,58vh)] w-full overflow-hidden rounded-xl border border-border/60 shadow-sm">
       <MapContainer
         key={trackKey}
-        center={center}
-        zoom={15}
+        center={[v.lat, v.lng]}
+        zoom={16}
         zoomControl={false}
         className="h-full w-full [&_.leaflet-control-attribution]:text-[10px]"
         scrollWheelZoom
@@ -105,11 +127,11 @@ export default function LiveBusMap({ vehicles, trackKey }: Props) {
         keyboard
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          url="https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+          subdomains={["0", "1", "2", "3"]}
+          maxZoom={21}
         />
-        <FollowSelectedBus position={marker.position} />
-        <Marker position={marker.position} icon={marker.icon} />
+        <SlidingMarker lat={v.lat} lng={v.lng} icon={icon} />
       </MapContainer>
     </div>
   )
