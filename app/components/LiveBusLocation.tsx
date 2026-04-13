@@ -1,7 +1,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { MapPin, RefreshCw } from "lucide-react"
@@ -46,21 +46,35 @@ type ErrPayload = {
 
 type Payload = OkPayload | ErrPayload
 
-const POLL_MS = 45_000
-const CLIENT_FETCH_MS = 55_000
+/** How often we ask Eup for fresh positions (Eup itself may update ~1s; we poll as fast as is reasonable for serverless + their API) */
+const POLL_MS = 2_000
+const CLIENT_FETCH_MS = 25_000
 
 export default function LiveBusLocation() {
   const [data, setData] = useState<Payload | null>(null)
   const [loading, setLoading] = useState(true)
   const [lastFetch, setLastFetch] = useState<Date | null>(null)
   const [selectedPlate, setSelectedPlate] = useState<string | null>(null)
+  /** Plates from last full fleet response — enables fast single-bus polling */
+  const plateRosterRef = useRef<string[]>([])
+  const showInitialSpinnerRef = useRef(true)
 
   const load = useCallback(async () => {
-    setLoading(true)
+    if (showInitialSpinnerRef.current) setLoading(true)
     const ac = new AbortController()
     const timeoutId = window.setTimeout(() => ac.abort(), CLIENT_FETCH_MS)
     try {
-      const res = await fetch("/api/bus-location", { cache: "no-store", signal: ac.signal })
+      const roster = plateRosterRef.current
+      const useSinglePoll =
+        Boolean(selectedPlate) &&
+        roster.length > 0 &&
+        roster.includes(selectedPlate)
+
+      const url = useSinglePoll
+        ? `/api/bus-location?carNumber=${encodeURIComponent(selectedPlate)}`
+        : "/api/bus-location"
+
+      const res = await fetch(url, { cache: "no-store", signal: ac.signal })
       const text = await res.text()
       let json: Payload
       try {
@@ -72,6 +86,30 @@ export default function LiveBusLocation() {
         })
         return
       }
+
+      if (!json.ok) {
+        setData(json)
+        return
+      }
+
+      if (json.vehicles.length > 1 || (json.vehicles.length === 1 && !useSinglePoll)) {
+        plateRosterRef.current = json.vehicles.map((v) => v.carNumber)
+        setData(json)
+        return
+      }
+
+      if (json.vehicles.length === 1 && useSinglePoll) {
+        const incoming = json.vehicles[0]
+        setData((prev) => {
+          if (!prev?.ok) return json
+          const merged = prev.vehicles.map((v) =>
+            v.carNumber === incoming.carNumber ? { ...v, ...incoming } : v,
+          )
+          return { ok: true, vehicles: merged }
+        })
+        return
+      }
+
       setData(json)
     } catch (e) {
       const aborted = e instanceof Error && e.name === "AbortError"
@@ -84,9 +122,10 @@ export default function LiveBusLocation() {
     } finally {
       window.clearTimeout(timeoutId)
       setLoading(false)
+      showInitialSpinnerRef.current = false
       setLastFetch(new Date())
     }
-  }, [])
+  }, [selectedPlate])
 
   useEffect(() => {
     load()
@@ -218,7 +257,7 @@ export default function LiveBusLocation() {
 
         {lastFetch && (
           <p className="text-center text-[10px] text-muted-foreground/80">
-            Updated {lastFetch.toLocaleTimeString()} · refresh every {POLL_MS / 1000}s
+            Updated {lastFetch.toLocaleTimeString()} · live refresh ~{POLL_MS / 1000}s
           </p>
         )}
       </CardContent>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef } from "react"
-import { MapContainer, Marker, TileLayer, useMap, ZoomControl } from "react-leaflet"
+import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 
@@ -54,7 +54,7 @@ function FollowSelectedBus({ position }: { position: [number, number] }) {
       first.current = false
       return
     }
-    map.panTo(position, { animate: true, duration: 0.5 })
+    map.panTo(position, { animate: true, duration: 0.35 })
   }, [map, position[0], position[1]])
 
   return null
@@ -95,7 +95,8 @@ export default function LiveBusMap({ vehicles, trackKey }: Props) {
         key={trackKey}
         center={center}
         zoom={15}
-        className="h-full w-full [&_.leaflet-control-attribution]:text-[10px] [&_.leaflet-top.leaflet-right]:mt-2"
+        zoomControl={false}
+        className="h-full w-full [&_.leaflet-control-attribution]:text-[10px]"
         scrollWheelZoom
         doubleClickZoom
         dragging
@@ -107,7 +108,6 @@ export default function LiveBusMap({ vehicles, trackKey }: Props) {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <ZoomControl position="topright" />
         <FollowSelectedBus position={marker.position} />
         <Marker position={marker.position} icon={marker.icon} />
       </MapContainer>
