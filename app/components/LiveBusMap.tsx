@@ -12,8 +12,6 @@ type Point = {
   status: number | null
 }
 
-const SLIDE_MS = 900
-
 /* ---------- SVG marker (green = running, grey = engine off) ---------- */
 
 function escapeXml(s: string): string {
@@ -78,11 +76,13 @@ function SlidingMarker({ lat, lng, icon }: { lat: number; lng: number; icon: L.I
   const rafRef = useRef(0)
   const iconRef = useRef(icon)
   iconRef.current = icon
+  const lastMoveRef = useRef(0)
 
   useEffect(() => {
     if (!markerRef.current) {
       markerRef.current = L.marker([lat, lng], { icon: iconRef.current }).addTo(map)
       map.setView([lat, lng], 16, { animate: false })
+      lastMoveRef.current = performance.now()
       return
     }
 
@@ -92,9 +92,15 @@ function SlidingMarker({ lat, lng, icon }: { lat: number; lng: number; icon: L.I
     const to = L.latLng(lat, lng)
     if (from.equals(to)) return
 
-    const t0 = performance.now()
-    const step = (now: number) => {
-      const p = Math.min((now - t0) / SLIDE_MS, 1)
+    const now = performance.now()
+    const gap = now - lastMoveRef.current
+    lastMoveRef.current = now
+    // Fill ~85 % of the real gap so the slide finishes just before the next update
+    const duration = Math.min(Math.max(gap * 0.85, 150), 2000)
+
+    const t0 = now
+    const step = (ts: number) => {
+      const p = Math.min((ts - t0) / duration, 1)
       marker.setLatLng([
         from.lat + (to.lat - from.lat) * p,
         from.lng + (to.lng - from.lng) * p,
@@ -103,7 +109,7 @@ function SlidingMarker({ lat, lng, icon }: { lat: number; lng: number; icon: L.I
     }
     rafRef.current = requestAnimationFrame(step)
 
-    map.panTo(to, { animate: true, duration: SLIDE_MS / 1000 })
+    map.panTo(to, { animate: true, duration: duration / 1000 })
   }, [map, lat, lng])
 
   useEffect(() => {

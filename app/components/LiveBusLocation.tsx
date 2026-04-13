@@ -50,7 +50,9 @@ type ErrPayload = {
 
 type Payload = OkPayload | ErrPayload
 
-const POLL_MS = 1_000
+/** Minimum gap between polls — the next poll fires as soon as the previous
+ *  response arrives + this gap, so we track as fast as Eup can respond. */
+const MIN_POLL_GAP_MS = 200
 const CLIENT_FETCH_MS = 15_000
 
 export default function LiveBusLocation() {
@@ -134,9 +136,17 @@ export default function LiveBusLocation() {
   }, [selectedPlate])
 
   useEffect(() => {
-    load()
-    const id = setInterval(load, POLL_MS)
-    return () => clearInterval(id)
+    let mounted = true
+    let timer: ReturnType<typeof setTimeout>
+    const poll = async () => {
+      await load()
+      if (mounted) timer = setTimeout(poll, MIN_POLL_GAP_MS)
+    }
+    poll()
+    return () => {
+      mounted = false
+      clearTimeout(timer)
+    }
   }, [load])
 
   useEffect(() => {
@@ -347,7 +357,7 @@ export default function LiveBusLocation() {
 
         {lastFetch && (
           <p className="text-center text-[10px] text-muted-foreground/80">
-            Updated {lastFetch.toLocaleTimeString()} · live refresh ~{POLL_MS / 1000}s
+            Updated {lastFetch.toLocaleTimeString()} · live tracking
           </p>
         )}
       </CardContent>
