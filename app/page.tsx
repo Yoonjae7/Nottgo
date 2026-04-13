@@ -98,8 +98,9 @@ export default function Home() {
             >
               <span
                 aria-hidden
+                style={{ transitionTimingFunction: "cubic-bezier(0.32, 0.72, 0, 1)" }}
                 className={cn(
-                  "pointer-events-none absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-xl bg-background shadow-md ring-1 ring-black/5 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none dark:ring-white/10",
+                  "pointer-events-none absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-xl bg-background shadow-md ring-1 ring-black/5 transition-transform duration-300 motion-reduce:transition-none dark:ring-white/10",
                   isBuggy ? "translate-x-full" : "translate-x-0",
                 )}
               />
