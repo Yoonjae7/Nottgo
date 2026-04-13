@@ -1,9 +1,19 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import { useCallback, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { MapPin, RefreshCw } from "lucide-react"
+
+const LiveBusMap = dynamic(() => import("./LiveBusMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-[200px] items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 text-xs text-muted-foreground">
+      Loading map…
+    </div>
+  ),
+})
 
 type VehicleRow = {
   carNumber: string
@@ -93,11 +103,12 @@ export default function LiveBusLocation() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-1">
-          <p className="text-sm text-muted-foreground">Contacting live bus service…</p>
+          <p className="text-sm text-muted-foreground">Loading buses from Eup…</p>
           <p className="text-xs text-muted-foreground/90">
-            Set <code className="rounded bg-muted px-1">EUP_TOKEN</code> and{" "}
-            <code className="rounded bg-muted px-1">EUP_CAR_NUMBER</code> (comma-separated plates) in{" "}
-            <code className="rounded bg-muted px-1">.env.local</code> or Vercel.
+            With several plates this can take 20–40s. If this never finishes, check the browser Network tab
+            for <code className="rounded bg-muted px-1">/api/bus-location</code> and confirm{" "}
+            <code className="rounded bg-muted px-1">EUP_TOKEN</code> /{" "}
+            <code className="rounded bg-muted px-1">EUP_CAR_NUMBER</code> on Vercel (Production) and redeploy.
           </p>
         </CardContent>
       </Card>
@@ -126,6 +137,9 @@ export default function LiveBusLocation() {
   }
 
   const { vehicles } = data as OkPayload
+  const mapPoints = vehicles
+    .filter((v) => v.lat != null && v.lng != null && !v.error)
+    .map((v) => ({ carNumber: v.carNumber, lat: v.lat!, lng: v.lng! }))
 
   return (
     <Card className="w-full">
@@ -150,6 +164,11 @@ export default function LiveBusLocation() {
         <p className="text-xs text-muted-foreground">{vehicles.length} vehicle(s)</p>
       </CardHeader>
       <CardContent className="space-y-0 text-sm">
+        <div className="mb-4 space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Map</p>
+          <LiveBusMap vehicles={mapPoints} />
+        </div>
+        <p className="mb-2 text-xs font-medium text-muted-foreground">Details</p>
         {vehicles.map((v, i) => (
           <div
             key={v.carNumber}
