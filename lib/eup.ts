@@ -38,11 +38,22 @@ export type CarStatusResponseBody = {
 }
 
 let sessionCache: { sessionId: string; expiresAt: number } | null = null
+/** Serialize concurrent logins when many plates are fetched in parallel */
+let loginInFlight: Promise<string> | null = null
 
 const SESSION_TTL_MS = 20 * 60 * 1000
 
 function clearSessionCache() {
   sessionCache = null
+}
+
+/** Comma-separated plates from env or query (e.g. "ABC1234,XYZ999") */
+export function parseEupCarNumbers(raw: string | undefined): string[] {
+  if (!raw?.trim()) return []
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
 }
 
 /** Avoid hanging the API route if Eup is slow or unreachable */
@@ -75,7 +86,13 @@ async function getSessionId(baseUrl: string, token: string): Promise<string> {
   if (sessionCache && sessionCache.expiresAt > Date.now()) {
     return sessionCache.sessionId
   }
-  return eupLogin(baseUrl, token)
+  if (loginInFlight) {
+    return loginInFlight
+  }
+  loginInFlight = eupLogin(baseUrl, token).finally(() => {
+    loginInFlight = null
+  })
+  return loginInFlight
 }
 
 export async function eupFetchCarStatus(

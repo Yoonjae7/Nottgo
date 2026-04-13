@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { MapPin, RefreshCw } from "lucide-react"
 
-type OkPayload = {
-  ok: true
+type VehicleRow = {
   carNumber: string
   lat: number | null
   lng: number | null
@@ -20,6 +19,12 @@ type OkPayload = {
   driverName: string | null
   empty?: boolean
   message?: string
+  error?: string
+}
+
+type OkPayload = {
+  ok: true
+  vehicles: VehicleRow[]
 }
 
 type ErrPayload = {
@@ -31,8 +36,8 @@ type ErrPayload = {
 type Payload = OkPayload | ErrPayload
 
 const POLL_MS = 45_000
-/** If the API route or Eup hangs, don't wait forever (browser fetch has no default timeout) */
-const CLIENT_FETCH_MS = 35_000
+/** Multiple parallel Eup calls — allow extra time */
+const CLIENT_FETCH_MS = 55_000
 
 export default function LiveBusLocation() {
   const [data, setData] = useState<Payload | null>(null)
@@ -84,16 +89,15 @@ export default function LiveBusLocation() {
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <MapPin className="h-4 w-4" aria-hidden />
-            Live bus position
+            Live bus positions
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-1">
           <p className="text-sm text-muted-foreground">Contacting live bus service…</p>
           <p className="text-xs text-muted-foreground/90">
-            First load can take up to ~20s. This is not caused by missing Vercel env vars — add{" "}
-            <code className="rounded bg-muted px-1">EUP_TOKEN</code> and{" "}
-            <code className="rounded bg-muted px-1">EUP_CAR_NUMBER</code> in{" "}
-            <code className="rounded bg-muted px-1">.env.local</code> for local dev.
+            Set <code className="rounded bg-muted px-1">EUP_TOKEN</code> and{" "}
+            <code className="rounded bg-muted px-1">EUP_CAR_NUMBER</code> (comma-separated plates) in{" "}
+            <code className="rounded bg-muted px-1">.env.local</code> or Vercel.
           </p>
         </CardContent>
       </Card>
@@ -107,7 +111,7 @@ export default function LiveBusLocation() {
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <MapPin className="h-4 w-4" aria-hidden />
-            Live bus position
+            Live bus positions
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
@@ -121,11 +125,7 @@ export default function LiveBusLocation() {
     )
   }
 
-  const d = data as OkPayload
-  const mapsUrl =
-    d.lat != null && d.lng != null
-      ? `https://www.openstreetmap.org/?mlat=${d.lat}&mlon=${d.lng}#map=16/${d.lat}/${d.lng}`
-      : null
+  const { vehicles } = data as OkPayload
 
   return (
     <Card className="w-full">
@@ -133,7 +133,7 @@ export default function LiveBusLocation() {
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <MapPin className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-            Live bus position
+            Live bus positions
           </CardTitle>
           <Button
             type="button"
@@ -147,50 +147,64 @@ export default function LiveBusLocation() {
             Refresh
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground">Plate: {d.carNumber}</p>
+        <p className="text-xs text-muted-foreground">{vehicles.length} vehicle(s)</p>
       </CardHeader>
-      <CardContent className="space-y-3 text-sm">
-        {d.empty ? (
-          <p className="text-muted-foreground">{d.message ?? "No live data right now."}</p>
-        ) : (
-          <>
-            {d.lat != null && d.lng != null && (
-              <p>
-                <span className="text-muted-foreground">Coordinates: </span>
-                {d.lat.toFixed(5)}, {d.lng.toFixed(5)}
+      <CardContent className="space-y-0 text-sm">
+        {vehicles.map((v, i) => (
+          <div
+            key={v.carNumber}
+            className={
+              i > 0 ? "border-t border-border/60 pt-3 mt-3 space-y-2" : "space-y-2 pb-1"
+            }
+          >
+            <p className="font-semibold text-foreground">{v.carNumber}</p>
+            {v.error ? (
+              <p className="text-xs text-destructive/90">{v.error}</p>
+            ) : v.empty ? (
+              <p className="text-xs text-muted-foreground">
+                {v.message ?? "No live data right now."}
               </p>
+            ) : (
+              <>
+                {v.lat != null && v.lng != null && (
+                  <p className="text-xs">
+                    <span className="text-muted-foreground">Coords: </span>
+                    {v.lat.toFixed(5)}, {v.lng.toFixed(5)}
+                  </p>
+                )}
+                {v.address && (
+                  <p className="text-xs">
+                    <span className="text-muted-foreground">Address: </span>
+                    {v.address}
+                  </p>
+                )}
+                {v.roadName && !v.address && (
+                  <p className="text-xs">
+                    <span className="text-muted-foreground">Road: </span>
+                    {v.roadName}
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+                  {v.logDTime && <span>Last fix: {v.logDTime}</span>}
+                  {v.logSpeed != null && <span>{v.logSpeed} km/h</span>}
+                  {v.statusLabel && <span>{v.statusLabel}</span>}
+                </div>
+                {v.lat != null && v.lng != null && (
+                  <a
+                    href={`https://www.openstreetmap.org/?mlat=${v.lat}&mlon=${v.lng}#map=16/${v.lat}/${v.lng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex text-xs font-medium text-primary underline-offset-4 hover:underline"
+                  >
+                    Open on map
+                  </a>
+                )}
+              </>
             )}
-            {d.address && (
-              <p>
-                <span className="text-muted-foreground">Address: </span>
-                {d.address}
-              </p>
-            )}
-            {d.roadName && !d.address && (
-              <p>
-                <span className="text-muted-foreground">Road: </span>
-                {d.roadName}
-              </p>
-            )}
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-              {d.logDTime && <span>Last fix: {d.logDTime}</span>}
-              {d.logSpeed != null && <span>Speed: {d.logSpeed} km/h</span>}
-              {d.statusLabel && <span>Status: {d.statusLabel}</span>}
-            </div>
-            {mapsUrl && (
-              <a
-                href={mapsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex text-sm font-medium text-primary underline-offset-4 hover:underline"
-              >
-                Open location on map
-              </a>
-            )}
-          </>
-        )}
+          </div>
+        ))}
         {lastFetch && (
-          <p className="text-[10px] text-muted-foreground/80">
+          <p className="mt-3 text-[10px] text-muted-foreground/80 border-t border-border/40 pt-2">
             Updated {lastFetch.toLocaleTimeString()} · auto-refresh every {POLL_MS / 1000}s
           </p>
         )}
