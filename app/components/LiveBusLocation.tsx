@@ -16,6 +16,10 @@ const LiveBusMap = dynamic(() => import("./LiveBusMap"), {
   ),
 })
 
+function isEngineOff(v: { status: number | null }): boolean {
+  return v.status === 2 || v.status === 3
+}
+
 type VehicleRow = {
   carNumber: string
   lat: number | null
@@ -192,7 +196,7 @@ export default function LiveBusLocation() {
     selected.lng != null &&
     !selected.error &&
     !selected.empty
-      ? [{ carNumber: selected.carNumber, lat: selected.lat, lng: selected.lng }]
+      ? [{ carNumber: selected.carNumber, lat: selected.lat, lng: selected.lng, status: selected.status }]
       : []
 
   let caption: string | null = null
@@ -235,18 +239,33 @@ export default function LiveBusLocation() {
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         <div className="flex flex-wrap gap-2">
-          {vehicles.map((v) => (
-            <Button
-              key={v.carNumber}
-              type="button"
-              size="sm"
-              variant={selectedPlate === v.carNumber ? "default" : "outline"}
-              className={cn("font-mono text-xs", selectedPlate === v.carNumber && "shadow-sm")}
-              onClick={() => setSelectedPlate(v.carNumber)}
-            >
-              {v.carNumber}
-            </Button>
-          ))}
+          {vehicles.map((v) => {
+            const off = isEngineOff(v)
+            const active = selectedPlate === v.carNumber
+            return (
+              <Button
+                key={v.carNumber}
+                type="button"
+                size="sm"
+                variant={active ? "default" : "outline"}
+                className={cn(
+                  "gap-1.5 font-mono text-xs",
+                  active && "shadow-sm",
+                  off && !active && "opacity-50 border-muted-foreground/30",
+                )}
+                onClick={() => setSelectedPlate(v.carNumber)}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
+                    off ? "bg-gray-400" : "bg-green-500",
+                    !off && "animate-pulse",
+                  )}
+                />
+                {v.carNumber}
+              </Button>
+            )
+          })}
         </div>
 
         {selectedPlate && (
