@@ -10,6 +10,8 @@ type Point = {
   lat: number
   lng: number
   status: number | null
+  speed: number | null
+  heading: number | null
 }
 
 /* ---------- SVG marker (green = running, grey = engine off) ---------- */
@@ -68,28 +70,66 @@ function isEngineOff(status: number | null): boolean {
   return status === 2 || status === 3
 }
 
-/* ---------- Velocity-extrapolating marker (dead reckoning at 60 fps) ---- */
+/* ---------- GPS velocity + decay extrapolation marker --------------- */
 
-/** Smoothing factor per 16.67 ms frame — higher = snappier correction */
+/** Smoothing factor per 16.67ms frame — how fast marker corrects toward prediction */
 const SMOOTHING = 0.12
-/** Stop extrapolating after this long without a new GPS fix */
-const MAX_EXTRAPOLATE_MS = 5_000
-/** Minimum speed (deg/ms) to count as moving — below this is GPS noise */
-const MIN_SPEED = 1e-9
+/** Velocity half-life: extrapolated speed decays by 50% over this period.
+ *  Longer = marker travels further between fixes (smoother)
+ *  but risks more overshoot on turns. 15s is a good campus-bus balance. */
+const DECAY_MS = 15_000
+/** Below this km/h, treat as stationary (filters GPS noise when stopped) */
+const MIN_SPEED_KMH = 2
 
-function SlidingMarker({ lat, lng, icon }: { lat: number; lng: number; icon: L.Icon }) {
+/** Convert GPS speed (km/h) + heading (degrees clockwise from north) to
+ *  a velocity vector in degrees-per-millisecond. */
+function gpsToVelocity(
+  speedKmh: number,
+  headingDeg: number,
+  refLat: number,
+): { lat: number; lng: number } {
+  const mPerS = speedKmh / 3.6
+  const rad = (headingDeg * Math.PI) / 180
+  const degPerM = 1 / 111_320
+  const cosLat = Math.cos((refLat * Math.PI) / 180) || 1
+  return {
+    lat: (mPerS * Math.cos(rad) * degPerM) / 1000,
+    lng: (mPerS * Math.sin(rad) * degPerM) / cosLat / 1000,
+  }
+}
+
+function SlidingMarker({
+  lat,
+  lng,
+  speed,
+  heading,
+  icon,
+}: {
+  lat: number
+  lng: number
+  speed: number | null
+  heading: number | null
+  icon: L.Icon
+}) {
   const map = useMap()
   const markerRef = useRef<L.Marker | null>(null)
   const rafRef = useRef(0)
   const iconRef = useRef(icon)
   iconRef.current = icon
 
-  const fixesRef = useRef<{ lat: number; lng: number; t: number }[]>([])
   const velRef = useRef({ lat: 0, lng: 0 })
   const targetRef = useRef({ lat, lng, t: performance.now() })
   const lastFrameRef = useRef(performance.now())
   const lastPanRef = useRef(0)
   const loopingRef = useRef(false)
+
+  // On every render (every poll), update velocity from GPS speed+heading if available.
+  // This fires even when lat/lng are unchanged — the GPS device still reports speed.
+  if (speed != null && speed >= MIN_SPEED_KMH && heading != null) {
+    velRef.current = gpsToVelocity(speed, heading, lat)
+  } else if (speed != null && speed < MIN_SPEED_KMH) {
+    velRef.current = { lat: 0, lng: 0 }
+  }
 
   const startLoop = () => {
     if (loopingRef.current) return
@@ -97,24 +137,32 @@ function SlidingMarker({ lat, lng, icon }: { lat: number; lng: number; icon: L.I
 
     const tick = (now: number) => {
       const marker = markerRef.current
-      if (!marker || !loopingRef.current) { loopingRef.current = false; return }
+      if (!marker || !loopingRef.current) {
+        loopingRef.current = false
+        return
+      }
 
       const dt = Math.min(now - lastFrameRef.current, 100)
       lastFrameRef.current = now
 
       const target = targetRef.current
       const vel = velRef.current
-      const elapsed = Math.min(now - target.t, MAX_EXTRAPOLATE_MS)
+      const elapsed = now - target.t
 
-      const pLat = target.lat + vel.lat * elapsed
-      const pLng = target.lng + vel.lng * elapsed
+      // Decaying displacement: v·τ·(1 − e^(−t/τ))
+      // Marker always moves but gradually slower — no hard stop, bounded overshoot
+      const displacement = DECAY_MS * (1 - Math.exp(-elapsed / DECAY_MS))
+      const pLat = target.lat + vel.lat * displacement
+      const pLng = target.lng + vel.lng * displacement
 
+      // Exponential smoothing (frame-rate independent)
       const alpha = 1 - Math.pow(1 - SMOOTHING, dt / 16.67)
       const pos = marker.getLatLng()
       const nextLat = pos.lat + (pLat - pos.lat) * alpha
       const nextLng = pos.lng + (pLng - pos.lng) * alpha
       marker.setLatLng([nextLat, nextLng])
 
+      // Gently re-center map
       if (now - lastPanRef.current > 800) {
         lastPanRef.current = now
         map.panTo([nextLat, nextLng], { animate: true, duration: 0.6 })
@@ -126,13 +174,14 @@ function SlidingMarker({ lat, lng, icon }: { lat: number; lng: number; icon: L.I
     rafRef.current = requestAnimationFrame(tick)
   }
 
+  // When a genuinely new GPS position arrives, reset the extrapolation anchor.
+  // If GPS velocity wasn't available, fall back to two-position calculation.
   useEffect(() => {
     const now = performance.now()
 
     if (!markerRef.current) {
       markerRef.current = L.marker([lat, lng], { icon: iconRef.current }).addTo(map)
       map.setView([lat, lng], 16, { animate: false })
-      fixesRef.current = [{ lat, lng, t: now }]
       targetRef.current = { lat, lng, t: now }
       lastFrameRef.current = now
       lastPanRef.current = now
@@ -143,24 +192,20 @@ function SlidingMarker({ lat, lng, icon }: { lat: number; lng: number; icon: L.I
     const prev = targetRef.current
     if (lat === prev.lat && lng === prev.lng) return
 
-    const fixes = fixesRef.current
-    fixes.push({ lat, lng, t: now })
-    if (fixes.length > 4) fixes.shift()
-
-    if (fixes.length >= 2) {
-      const a = fixes[fixes.length - 2]
-      const b = fixes[fixes.length - 1]
-      const dt = b.t - a.t
+    // Fallback: if no GPS speed/heading, derive velocity from two positions
+    const hasGpsVel = speed != null && speed >= MIN_SPEED_KMH && heading != null
+    if (!hasGpsVel) {
+      const dt = now - prev.t
       if (dt > 100) {
-        const vLat = (b.lat - a.lat) / dt
-        const vLng = (b.lng - a.lng) / dt
-        const speed = Math.sqrt(vLat * vLat + vLng * vLng)
-        velRef.current = speed > MIN_SPEED ? { lat: vLat, lng: vLng } : { lat: 0, lng: 0 }
+        velRef.current = {
+          lat: (lat - prev.lat) / dt,
+          lng: (lng - prev.lng) / dt,
+        }
       }
     }
 
     targetRef.current = { lat, lng, t: now }
-  }, [map, lat, lng])
+  }, [map, lat, lng]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     markerRef.current?.setIcon(icon)
@@ -219,7 +264,7 @@ export default function LiveBusMap({ vehicles, trackKey }: Props) {
           subdomains="abcd"
           maxZoom={20}
         />
-        <SlidingMarker lat={v.lat} lng={v.lng} icon={icon} />
+        <SlidingMarker lat={v.lat} lng={v.lng} speed={v.speed} heading={v.heading} icon={icon} />
       </MapContainer>
     </div>
   )

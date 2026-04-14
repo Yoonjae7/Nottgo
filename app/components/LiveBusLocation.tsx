@@ -26,6 +26,7 @@ type VehicleRow = {
   lng: number | null
   logDTime: string | null
   logSpeed: number | null
+  direct: number | null
   address: string | null
   roadName: string | null
   status: number | null
@@ -275,7 +276,7 @@ export default function LiveBusLocation() {
     selected.lng != null &&
     !selected.error &&
     !selected.empty
-      ? [{ carNumber: selected.carNumber, lat: selected.lat, lng: selected.lng, status: selected.status }]
+      ? [{ carNumber: selected.carNumber, lat: selected.lat, lng: selected.lng, status: selected.status, speed: selected.logSpeed, heading: selected.direct }]
       : []
 
   let caption: string | null = null

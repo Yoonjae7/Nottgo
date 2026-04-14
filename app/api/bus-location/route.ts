@@ -15,6 +15,7 @@ export type VehicleLocationPayload = {
   lng: number | null
   logDTime: string | null
   logSpeed: number | null
+  direct: number | null
   address: string | null
   roadName: string | null
   status: number | null
@@ -68,6 +69,7 @@ export async function GET(request: Request) {
           lng: null,
           logDTime: null,
           logSpeed: null,
+          direct: null,
           address: null,
           roadName: null,
           status: null,
@@ -84,6 +86,7 @@ export async function GET(request: Request) {
         lng: latLng?.lng ?? null,
         logDTime: row.logDTime ?? null,
         logSpeed: row.logSpeed ?? null,
+        direct: row.direct ?? null,
         address: row.address ?? null,
         roadName: row.roadName ?? null,
         status: row.status ?? null,
@@ -99,6 +102,7 @@ export async function GET(request: Request) {
         lng: null,
         logDTime: null,
         logSpeed: null,
+        direct: null,
         address: null,
         roadName: null,
         status: null,
