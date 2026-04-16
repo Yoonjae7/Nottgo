@@ -4,7 +4,7 @@ import dynamic from "next/dynamic"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { MapPin, RefreshCw } from "lucide-react"
+import { MapPin } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const LiveBusMap = dynamic(() => import("./LiveBusMap"), {
@@ -259,10 +259,7 @@ export default function LiveBusLocation() {
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <p>{msg}</p>
-          <Button type="button" variant="outline" size="sm" onClick={() => load()} className="gap-2">
-            <RefreshCw className="h-3.5 w-3.5" />
-            Retry
-          </Button>
+          <p className="text-xs">Still trying in the background — or refresh the page.</p>
         </CardContent>
       </Card>
     )
@@ -298,23 +295,10 @@ export default function LiveBusLocation() {
   return (
     <Card className="w-full">
       <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <MapPin className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-            Live bus
-          </CardTitle>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 shrink-0 gap-1 text-xs"
-            onClick={() => load()}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
-        </div>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <MapPin className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+          Live bus
+        </CardTitle>
         <p className="text-xs text-muted-foreground">Choose a bus to track on the map.</p>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
