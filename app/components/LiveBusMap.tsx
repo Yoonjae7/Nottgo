@@ -333,19 +333,10 @@ function MapOverlayButtons({
     onFitBoth()
   }, [map, busLat, busLng, user, onFitBoth])
 
+  // One control at a time: following → only "Fit bus & me" (needs your GPS); fitted/free pan → only "Follow bus"
   return createPortal(
     <div className="pointer-events-none absolute bottom-2 right-2 z-[1000] flex w-max max-w-[calc(100%-1rem)] flex-col items-stretch gap-2">
-      {/* Follow first (higher on screen) so it never sits under "Fit"; Fit sits on the bottom edge */}
-      {!followBus && (
-        <button
-          type="button"
-          onClick={onFollowBus}
-          className="pointer-events-auto whitespace-nowrap rounded-md border border-border/80 bg-background/95 px-2.5 py-1.5 text-[11px] font-medium text-foreground shadow-md backdrop-blur-sm hover:bg-muted/90"
-        >
-          Follow bus
-        </button>
-      )}
-      {user && (
+      {followBus && user ? (
         <button
           type="button"
           onClick={fit}
@@ -353,7 +344,15 @@ function MapOverlayButtons({
         >
           Fit bus &amp; me
         </button>
-      )}
+      ) : !followBus ? (
+        <button
+          type="button"
+          onClick={onFollowBus}
+          className="pointer-events-auto whitespace-nowrap rounded-md border border-border/80 bg-background/95 px-2.5 py-1.5 text-[11px] font-medium text-foreground shadow-md backdrop-blur-sm hover:bg-muted/90"
+        >
+          Follow bus
+        </button>
+      ) : null}
     </div>,
     el,
   )
