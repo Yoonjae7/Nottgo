@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useMemo, useRef } from "react"
-import { MapContainer, TileLayer, useMap } from "react-leaflet"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { createPortal } from "react-dom"
+import { Circle, CircleMarker, MapContainer, TileLayer, useMap } from "react-leaflet"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 
@@ -104,12 +105,14 @@ function SlidingMarker({
   speed,
   heading,
   icon,
+  panMap,
 }: {
   lat: number
   lng: number
   speed: number | null
   heading: number | null
   icon: L.Icon
+  panMap: boolean
 }) {
   const map = useMap()
   const markerRef = useRef<L.Marker | null>(null)
@@ -122,6 +125,8 @@ function SlidingMarker({
   const lastFrameRef = useRef(performance.now())
   const lastPanRef = useRef(0)
   const loopingRef = useRef(false)
+  const panMapRef = useRef(panMap)
+  panMapRef.current = panMap
 
   // On every render (every poll), update velocity from GPS speed+heading if available.
   // This fires even when lat/lng are unchanged — the GPS device still reports speed.
@@ -162,8 +167,8 @@ function SlidingMarker({
       const nextLng = pos.lng + (pLng - pos.lng) * alpha
       marker.setLatLng([nextLat, nextLng])
 
-      // Gently re-center map
-      if (now - lastPanRef.current > 800) {
+      // Gently re-center map (optional — user can pause to compare with their own GPS)
+      if (panMapRef.current && now - lastPanRef.current > 800) {
         lastPanRef.current = now
         map.panTo([nextLat, nextLng], { animate: true, duration: 0.6 })
       }
@@ -223,6 +228,136 @@ function SlidingMarker({
   return null
 }
 
+type UserPos = { lat: number; lng: number; accuracyM: number; accuracyLabelM: number }
+
+function UserLocationOnMap({
+  onPosition,
+  onError,
+}: {
+  onPosition: (p: UserPos | null) => void
+  onError: (msg: string | null) => void
+}) {
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      onError("Geolocation is not supported in this browser.")
+      return
+    }
+
+    const id = navigator.geolocation.watchPosition(
+      (pos) => {
+        const raw = pos.coords.accuracy
+        const accuracyLabelM = raw != null && Number.isFinite(raw) ? raw : 25
+        const accuracyM = Math.min(Math.max(accuracyLabelM, 8), 500)
+        onPosition({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracyM,
+          accuracyLabelM,
+        })
+        onError(null)
+      },
+      (err) => {
+        onPosition(null)
+        const code = err.code
+        if (code === 1) {
+          onError("Location permission denied — enable it in the browser to see yourself on the map.")
+        } else if (code === 2) {
+          onError("Could not determine your position. Try outdoors or check system location services.")
+        } else {
+          onError(err.message || "Could not read your location.")
+        }
+      },
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 25_000 },
+    )
+
+    return () => {
+      navigator.geolocation.clearWatch(id)
+      onPosition(null)
+    }
+  }, [onPosition, onError])
+
+  return null
+}
+
+function UserLocationShapes({ user }: { user: UserPos }) {
+  return (
+    <>
+      <Circle
+        center={[user.lat, user.lng]}
+        radius={user.accuracyM}
+        pathOptions={{
+          color: "#2563eb",
+          weight: 1,
+          fillColor: "#3b82f6",
+          fillOpacity: 0.12,
+          opacity: 0.55,
+        }}
+      />
+      <CircleMarker
+        center={[user.lat, user.lng]}
+        radius={6}
+        pathOptions={{
+          color: "#ffffff",
+          weight: 2.5,
+          fillColor: "#2563eb",
+          fillOpacity: 1,
+          opacity: 1,
+        }}
+      />
+    </>
+  )
+}
+
+function MapOverlayButtons({
+  busLat,
+  busLng,
+  user,
+  followBus,
+  onFollowBus,
+  onFitBoth,
+}: {
+  busLat: number
+  busLng: number
+  user: UserPos | null
+  followBus: boolean
+  onFollowBus: () => void
+  onFitBoth: () => void
+}) {
+  const map = useMap()
+  const el = map.getContainer()
+
+  const fit = useCallback(() => {
+    if (!user) return
+    const b = L.latLngBounds(L.latLng(busLat, busLng), L.latLng(user.lat, user.lng))
+    map.fitBounds(b.pad(0.14), { animate: true })
+    onFitBoth()
+  }, [map, busLat, busLng, user, onFitBoth])
+
+  return createPortal(
+    <div className="pointer-events-none absolute bottom-2 right-2 z-[1000] flex flex-col items-end gap-1.5">
+      {user && (
+        <button
+          type="button"
+          onClick={fit}
+          className="pointer-events-auto rounded-md border border-border/80 bg-background/95 px-2.5 py-1.5 text-[11px] font-medium text-foreground shadow-md backdrop-blur-sm hover:bg-muted/90"
+        >
+          Fit bus &amp; me
+        </button>
+      )}
+      {!followBus && (
+        <button
+          type="button"
+          onClick={onFollowBus}
+          className="pointer-events-auto rounded-md border border-border/80 bg-background/95 px-2.5 py-1.5 text-[11px] font-medium text-foreground shadow-md backdrop-blur-sm hover:bg-muted/90"
+        >
+          Follow bus
+        </button>
+      )}
+    </div>,
+    el,
+  )
+}
+
 /* ---------- Main component ---------- */
 
 type Props = {
@@ -235,6 +370,21 @@ export default function LiveBusMap({ vehicles, trackKey }: Props) {
   const off = v ? isEngineOff(v.status) : false
   const icon = useMemo(() => (v ? createBusIcon(v.carNumber, off) : null), [v?.carNumber, off])
 
+  const [userPos, setUserPos] = useState<UserPos | null>(null)
+  const [geoError, setGeoError] = useState<string | null>(null)
+  const [followBus, setFollowBus] = useState(true)
+
+  const onPosition = useCallback((p: UserPos | null) => {
+    setUserPos(p)
+  }, [])
+  const onGeoError = useCallback((msg: string | null) => {
+    setGeoError(msg)
+  }, [])
+
+  useEffect(() => {
+    setFollowBus(true)
+  }, [trackKey])
+
   if (!v || !icon) {
     return (
       <p className="rounded-lg border border-dashed border-border/80 bg-muted/30 px-3 py-8 text-center text-xs text-muted-foreground">
@@ -244,28 +394,59 @@ export default function LiveBusMap({ vehicles, trackKey }: Props) {
   }
 
   return (
-    <div className="relative z-0 h-[min(360px,58vh)] w-full overflow-hidden rounded-xl border border-border/60 shadow-sm">
-      <MapContainer
-        key={trackKey}
-        center={[v.lat, v.lng]}
-        zoom={16}
-        zoomControl={false}
-        className="h-full w-full [&_.leaflet-control-attribution]:text-[10px]"
-        scrollWheelZoom
-        doubleClickZoom
-        dragging
-        touchZoom
-        boxZoom
-        keyboard
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
-          subdomains="abcd"
-          maxZoom={20}
-        />
-        <SlidingMarker lat={v.lat} lng={v.lng} speed={v.speed} heading={v.heading} icon={icon} />
-      </MapContainer>
+    <div className="space-y-2">
+      <div className="relative z-0 h-[min(360px,58vh)] w-full overflow-hidden rounded-xl border border-border/60 shadow-sm">
+        <MapContainer
+          key={trackKey}
+          center={[v.lat, v.lng]}
+          zoom={16}
+          zoomControl={false}
+          className="h-full w-full [&_.leaflet-control-attribution]:text-[10px]"
+          scrollWheelZoom
+          doubleClickZoom
+          dragging
+          touchZoom
+          boxZoom
+          keyboard
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
+            subdomains="abcd"
+            maxZoom={20}
+          />
+          <UserLocationOnMap onPosition={onPosition} onError={onGeoError} />
+          {userPos && <UserLocationShapes user={userPos} />}
+          <SlidingMarker
+            lat={v.lat}
+            lng={v.lng}
+            speed={v.speed}
+            heading={v.heading}
+            icon={icon}
+            panMap={followBus}
+          />
+          <MapOverlayButtons
+            busLat={v.lat}
+            busLng={v.lng}
+            user={userPos}
+            followBus={followBus}
+            onFollowBus={() => setFollowBus(true)}
+            onFitBoth={() => setFollowBus(false)}
+          />
+        </MapContainer>
+      </div>
+      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+        {userPos && (
+          <span>
+            <span className="font-medium text-foreground">You</span>: blue dot · ~{Math.round(userPos.accuracyLabelM)} m
+            reported accuracy
+          </span>
+        )}
+        {geoError && <span className="text-amber-700 dark:text-amber-400">{geoError}</span>}
+        {!userPos && !geoError && (
+          <span>Requesting your location (high accuracy)… allow if prompted.</span>
+        )}
+      </div>
     </div>
   )
 }
