@@ -97,7 +97,7 @@ export default function Home() {
               alt="University of Nottingham — UK, China, Malaysia"
               width={450}
               height={173}
-              className="h-11 w-auto shrink object-contain object-left sm:h-12 max-h-[3.25rem] sm:max-h-[3.75rem] max-w-[min(68%,17rem)] sm:max-w-[min(74%,18.5rem)]"
+              className="h-12 w-auto shrink object-contain object-left sm:h-14 max-h-[3.6rem] sm:max-h-[4.1rem] max-w-[min(72%,19rem)] sm:max-w-[min(80%,21rem)]"
               priority
             />
             <Image
@@ -105,7 +105,7 @@ export default function Home() {
               alt="Students' Association of the University of Nottingham Malaysia"
               width={440}
               height={176}
-              className="h-12 w-auto max-h-14 min-h-[3rem] shrink object-contain sm:h-14 sm:max-h-16 sm:min-h-[3.5rem] max-w-[min(72%,15rem)] sm:max-w-[min(78%,17rem)]"
+              className="h-14 w-auto max-h-16 min-h-[3.35rem] shrink object-contain sm:h-16 sm:max-h-[4.25rem] sm:min-h-16 max-w-[min(76%,17.5rem)] sm:max-w-[min(82%,19.5rem)]"
             />
           </div>
         </CardHeader>

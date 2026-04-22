@@ -23,6 +23,7 @@ export default function BuggyScheduleDisplay({
   currentTime,
 }: BuggyScheduleDisplayProps) {
   const stopName = buggyStops[stopIndex] ?? "Stop"
+  const currentHm = format(currentTime, "HH:mm")
 
   const arrivalCountdownLabel = (() => {
     if (scheduleType !== "Weekday" || !nextArrival) return null
@@ -118,13 +119,15 @@ export default function BuggyScheduleDisplay({
                 {arrivalTimes.map((time) => {
                   const passed = isTimePassed(time)
                   const isNext = time === nextArrival
+                  const isGraceMinute = time === currentHm
+                  const isHighlighted = !passed && (isNext || isGraceMinute)
                   return (
                     <div
                       key={time}
                       className={`rounded p-2 text-center relative tabular-nums ${
                         passed
                           ? "bg-red-100 text-red-600 opacity-60 dark:bg-red-950/40 dark:text-red-300"
-                          : isNext
+                          : isHighlighted
                             ? "ring-2 ring-primary bg-primary/10"
                             : "bg-gray-100 dark:bg-muted/60"
                       }`}
