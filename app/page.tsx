@@ -89,28 +89,23 @@ export default function Home() {
       <Card className="relative w-full max-w-[95%] sm:max-w-md rounded-2xl border-border/60 bg-card/85 shadow-xl shadow-slate-300/25 ring-1 ring-slate-200/70 backdrop-blur-md dark:bg-card/90 dark:shadow-black/40 dark:ring-white/10">
         <CardHeader className="border-b border-border/50 bg-gradient-to-br from-card via-card to-primary/[0.06] px-4 pb-4 pt-4 dark:to-primary/10 sm:px-5">
           <div
-            className="flex items-center justify-between gap-3"
+            className="flex items-center justify-between gap-3 sm:gap-4"
             aria-label="University and Students' Association branding"
           >
-            <div
-              className="relative h-9 w-[1.85rem] shrink-0 overflow-hidden rounded-md ring-1 ring-black/[0.06] dark:ring-white/10 sm:h-10 sm:w-8"
-              title="University of Nottingham"
-            >
-              <Image
-                src="/branding/university-of-nottingham.png"
-                alt="University of Nottingham"
-                fill
-                sizes="36px"
-                className="object-cover object-left"
-                priority
-              />
-            </div>
+            <Image
+              src="/branding/nottingham-brand-blue-horizontal.png"
+              alt="University of Nottingham — UK, China, Malaysia"
+              width={450}
+              height={173}
+              className="h-11 w-auto shrink object-contain object-left sm:h-12 max-h-[3.25rem] sm:max-h-[3.75rem] max-w-[min(68%,17rem)] sm:max-w-[min(74%,18.5rem)]"
+              priority
+            />
             <Image
               src="/branding/students-association-unm.png"
               alt="Students' Association of the University of Nottingham Malaysia"
-              width={220}
-              height={88}
-              className="h-9 w-auto max-h-10 max-w-[min(58%,11rem)] shrink-0 object-contain sm:h-10 sm:max-h-11 sm:max-w-[min(60%,12rem)]"
+              width={440}
+              height={176}
+              className="h-12 w-auto max-h-14 min-h-[3rem] shrink object-contain sm:h-14 sm:max-h-16 sm:min-h-[3.5rem] max-w-[min(72%,15rem)] sm:max-w-[min(78%,17rem)]"
             />
           </div>
         </CardHeader>
