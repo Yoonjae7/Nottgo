@@ -47,6 +47,7 @@ export async function GET(request: Request) {
       { status: 503 },
     )
   }
+  const authToken = token
   if (plates.length === 0) {
     return NextResponse.json(
       {
@@ -60,7 +61,7 @@ export async function GET(request: Request) {
 
   async function fetchOne(plate: string): Promise<VehicleLocationPayload> {
     try {
-      const data = await eupFetchCarStatus(baseUrl, token, plate)
+      const data = await eupFetchCarStatus(baseUrl, authToken, plate)
       const row = data.result?.[0]
       if (!row) {
         return {
