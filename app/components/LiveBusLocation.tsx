@@ -56,12 +56,32 @@ type Payload = OkPayload | ErrPayload
 const MIN_POLL_GAP_MS = 200
 const CLIENT_FETCH_MS = 15_000
 
+function stubVehicleRow(plate: string): VehicleRow {
+  return {
+    carNumber: plate,
+    lat: null,
+    lng: null,
+    logDTime: null,
+    logSpeed: null,
+    direct: null,
+    address: null,
+    roadName: null,
+    status: null,
+    turnOffStatus: null,
+    driverName: null,
+    empty: true,
+    message: "Updating…",
+  }
+}
+
 export default function LiveBusLocation() {
   const [data, setData] = useState<Payload | null>(null)
   const [loading, setLoading] = useState(true)
   const [lastFetch, setLastFetch] = useState<Date | null>(null)
   const [selectedPlate, setSelectedPlate] = useState<string | null>(null)
   const plateRosterRef = useRef<string[]>([])
+  /** Last successful multi-row snapshot — merge target so single-bus polls never shrink the roster. */
+  const lastGoodVehiclesRef = useRef<VehicleRow[]>([])
   const showInitialSpinnerRef = useRef(true)
   const inFlightRef = useRef(false)
 
@@ -73,13 +93,17 @@ export default function LiveBusLocation() {
     const timeoutId = window.setTimeout(() => ac.abort(), CLIENT_FETCH_MS)
     try {
       const roster = plateRosterRef.current
-      const useSinglePoll =
-        Boolean(selectedPlate) &&
+      const snapshotOk =
         roster.length > 0 &&
+        lastGoodVehiclesRef.current.length > 0 &&
+        lastGoodVehiclesRef.current.length === roster.length
+      const useSinglePoll =
+        snapshotOk &&
+        Boolean(selectedPlate) &&
         roster.includes(selectedPlate)
 
       const url = useSinglePoll
-        ? `/api/bus-location?carNumber=${encodeURIComponent(selectedPlate)}`
+        ? `/api/bus-location?carNumber=${encodeURIComponent(selectedPlate!)}`
         : "/api/bus-location"
 
       const res = await fetch(url, { cache: "no-store", signal: ac.signal })
@@ -102,6 +126,7 @@ export default function LiveBusLocation() {
 
       if (json.vehicles.length > 1 || (json.vehicles.length === 1 && !useSinglePoll)) {
         plateRosterRef.current = json.vehicles.map((v) => v.carNumber)
+        lastGoodVehiclesRef.current = json.vehicles
         setData(json)
         return
       }
@@ -109,15 +134,32 @@ export default function LiveBusLocation() {
       if (json.vehicles.length === 1 && useSinglePoll) {
         const incoming = json.vehicles[0]
         setData((prev) => {
-          if (!prev?.ok) return json
-          const merged = prev.vehicles.map((v) =>
-            v.carNumber === incoming.carNumber ? { ...v, ...incoming } : v,
-          )
+          const plates = plateRosterRef.current
+          let baseByPlate = new Map<string, VehicleRow>()
+          if (lastGoodVehiclesRef.current.length === plates.length) {
+            for (const v of lastGoodVehiclesRef.current) {
+              baseByPlate.set(v.carNumber, v)
+            }
+          } else if (prev?.ok && prev.vehicles.length === plates.length) {
+            for (const v of prev.vehicles) {
+              baseByPlate.set(v.carNumber, v)
+            }
+          }
+
+          const merged = plates.map((plate) => {
+            const existing = baseByPlate.get(plate) ?? stubVehicleRow(plate)
+            return plate === incoming.carNumber ? { ...existing, ...incoming } : existing
+          })
+          lastGoodVehiclesRef.current = merged
           return { ok: true, vehicles: merged }
         })
         return
       }
 
+      if (json.ok && json.vehicles.length > 0) {
+        plateRosterRef.current = json.vehicles.map((v) => v.carNumber)
+        lastGoodVehiclesRef.current = json.vehicles
+      }
       setData(json)
     } catch (e) {
       const aborted = e instanceof Error && e.name === "AbortError"
@@ -148,6 +190,15 @@ export default function LiveBusLocation() {
       mounted = false
       clearTimeout(timer)
     }
+  }, [load])
+
+  /** After idle/background tabs, timers can lag — refresh when user returns so roster/snapshot stay aligned. */
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void load()
+    }
+    document.addEventListener("visibilitychange", onVisible)
+    return () => document.removeEventListener("visibilitychange", onVisible)
   }, [load])
 
   useEffect(() => {
