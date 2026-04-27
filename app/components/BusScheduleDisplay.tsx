@@ -3,6 +3,7 @@ import { busDestinations } from "@/lib/data"
 import { Badge } from "@/components/ui/badge"
 import { format, parse } from "date-fns"
 import type { ScheduleType, ScheduleEntry } from "@/lib/data"
+import { formatArrivalCountdown } from "@/lib/arrivalCountdown"
 import { getBusSlotVisual } from "@/lib/scheduleSlotVisual"
 import { ScheduleTimeSlot } from "./ScheduleTimeSlot"
 
@@ -41,15 +42,7 @@ export default function BusScheduleDisplay({
   const arrivalCountdownLabel = (() => {
     if (!nextDeparture) return null
     const departureAt = parse(nextDeparture, "HH:mm", currentTime)
-    const diffMs = departureAt.getTime() - currentTime.getTime()
-    if (diffMs <= 0) return "Soon"
-    if (diffMs <= 60_000) return "Soon"
-    const mins = Math.ceil(diffMs / 60_000)
-    if (mins >= 60) {
-      const hours = Math.max(1, Math.round(diffMs / 3_600_000))
-      return hours === 1 ? "In 1 hour" : `In ${hours} hours`
-    }
-    return `In ${mins} minutes`
+    return formatArrivalCountdown(departureAt.getTime() - currentTime.getTime())
   })()
 
   // Only show badge for vans, not for buses or regular services

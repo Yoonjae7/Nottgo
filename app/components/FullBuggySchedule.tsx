@@ -1,15 +1,13 @@
 "use client"
 
-"use client"
-
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { addMinutes, format, parse } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import { buggySchedule, buggyStops, fridayExceptionTimes, getBuggyNextArrival } from "@/lib/data"
-import { addMinutes, format, parse } from "date-fns"
 import { getBuggySlotVisual } from "@/lib/scheduleSlotVisual"
 import { ScheduleTimeSlot } from "./ScheduleTimeSlot"
 
@@ -27,10 +25,20 @@ export default function FullBuggySchedule({ onClose, isFriday }: FullBuggySchedu
     return () => clearInterval(id)
   }, [])
 
-  const calculateTime = (baseTime: string, stopIndex: number) => {
-    const date = parse(baseTime, "HH:mm", new Date())
-    return format(addMinutes(date, 3 * stopIndex), "HH:mm")
-  }
+  /** Per-row cell times only depend on the base schedule + stop offset (3 min/stop), not on `now`. */
+  const cellTimesPerRow = useMemo(() => {
+    const baseDate = new Date()
+    return buggySchedule.map((baseTime) => {
+      const parsed = parse(baseTime, "HH:mm", baseDate)
+      return buggyStops.map((_, index) => format(addMinutes(parsed, 3 * index), "HH:mm"))
+    })
+  }, [])
+
+  /** One next-arrival per stop — recomputed when the clock ticks or Friday flips. */
+  const nextArrivalsPerStop = useMemo(
+    () => buggyStops.map((_, index) => getBuggyNextArrival(index, now, isFriday)),
+    [now, isFriday],
+  )
 
   return (
     <Card className="w-full">
@@ -59,7 +67,7 @@ export default function FullBuggySchedule({ onClose, isFriday }: FullBuggySchedu
               </TableRow>
             </TableHeader>
             <TableBody>
-              {buggySchedule.map((time) => {
+              {buggySchedule.map((time, rowIndex) => {
                 const isFridayException = isFriday && fridayExceptionTimes.includes(time)
                 return (
                   <TableRow key={time} className={isFridayException ? "bg-red-50" : ""}>
@@ -74,23 +82,11 @@ export default function FullBuggySchedule({ onClose, isFriday }: FullBuggySchedu
                           </TableCell>
                         )
                       }
-                      const cellTime = calculateTime(time, index)
-                      const nextForStop = getBuggyNextArrival(index, now, isFriday)
-                      const visual = getBuggySlotVisual(
-                        cellTime,
-                        nextForStop,
-                        now,
-                      )
+                      const cellTime = cellTimesPerRow[rowIndex][index]
+                      const visual = getBuggySlotVisual(cellTime, nextArrivalsPerStop[index], now)
                       return (
-                        <TableCell
-                          key={`${time}-${index}`}
-                          className="p-1.5 text-center align-top"
-                        >
-                          <ScheduleTimeSlot
-                            visual={visual}
-                            className="w-full min-w-0 text-sm"
-                            tabularNums
-                          >
+                        <TableCell key={`${time}-${index}`} className="p-1.5 text-center align-top">
+                          <ScheduleTimeSlot visual={visual} className="w-full min-w-0 text-sm" tabularNums>
                             {cellTime}
                           </ScheduleTimeSlot>
                         </TableCell>

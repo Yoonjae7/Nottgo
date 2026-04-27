@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { busSchedule, busDestinations, getBusNextDeparture, type ScheduleType } from "@/lib/data"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { busSchedule, busDestinations, getBusNextDeparture, type ScheduleType } from "@/lib/data"
 import { getBusSlotVisual } from "@/lib/scheduleSlotVisual"
 import { ScheduleTimeSlot } from "./ScheduleTimeSlot"
 
@@ -15,7 +15,6 @@ interface FullBusScheduleProps {
 }
 
 export default function FullBusSchedule({ destination, onClose }: FullBusScheduleProps) {
-  const [currentTab, setCurrentTab] = useState<ScheduleType>("weekday")
   const [now, setNow] = useState(() => new Date())
   const schedule = busSchedule[destination]
   const destinationName = busDestinations.find((d) => d.id === destination)?.name || destination
@@ -90,7 +89,7 @@ export default function FullBusSchedule({ destination, onClose }: FullBusSchedul
         <CardDescription className="text-sm">View all schedule types</CardDescription>
       </CardHeader>
       <CardContent className="p-0">
-        <Tabs defaultValue="weekday" onValueChange={(value) => setCurrentTab(value as ScheduleType)}>
+        <Tabs defaultValue="weekday">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="weekday">Mon-Thu</TabsTrigger>
             <TabsTrigger value="friday">Friday</TabsTrigger>

@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import { buggyStops } from "@/lib/data"
+import { formatArrivalCountdown } from "@/lib/arrivalCountdown"
 import { getBuggySlotVisual } from "@/lib/scheduleSlotVisual"
 import { ScheduleTimeSlot } from "./ScheduleTimeSlot"
 
@@ -29,15 +30,7 @@ export default function BuggyScheduleDisplay({
   const arrivalCountdownLabel = (() => {
     if (scheduleType !== "Weekday" || !nextArrival) return null
     const arrivalAt = parse(nextArrival, "HH:mm", currentTime)
-    const diffMs = arrivalAt.getTime() - currentTime.getTime()
-    if (diffMs <= 0) return "Soon"
-    if (diffMs <= 60_000) return "Soon"
-    const mins = Math.ceil(diffMs / 60_000)
-    if (mins >= 60) {
-      const hours = Math.max(1, Math.round(diffMs / 3_600_000))
-      return hours === 1 ? "In 1 hour" : `In ${hours} hours`
-    }
-    return `In ${mins} minutes`
+    return formatArrivalCountdown(arrivalAt.getTime() - currentTime.getTime())
   })()
 
   const scheduleBadgeLabel =

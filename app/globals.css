@@ -106,32 +106,32 @@
   40% { transform: translateY(-3px); opacity: 1; }
 }
 
-/* Current clock minute: moving segment along the edge (distinct from solid "next" ring) */
+/* Current clock minute: a small primary segment sweeps the edge (distinct from solid "next" ring).
+   Uses @property to animate only the gradient angle so the cell does not need overflow:hidden,
+   which means absolute-positioned badges (e.g. "Bus" / "Van") still escape the cell. */
+@property --schedule-grace-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
 @keyframes schedule-grace-rotate {
   to {
-    transform: rotate(1turn);
+    --schedule-grace-angle: 360deg;
   }
 }
 
 @layer components {
   .schedule-slot-grace-outer {
-    @apply relative z-0 overflow-hidden rounded p-[2px];
-  }
-  .schedule-slot-grace-outer::before {
-    content: "";
-    @apply pointer-events-none absolute;
-    z-index: 0;
-    inset: -100%;
+    @apply relative rounded p-[2px];
     background: conic-gradient(
-      from 0deg,
-      hsl(var(--primary)) 0deg,
-      hsl(var(--primary)) 2.5deg,
-      transparent 2.5deg 18deg
+      from var(--schedule-grace-angle),
+      hsl(var(--primary)) 0deg 14deg,
+      transparent 14deg 360deg
     );
     animation: schedule-grace-rotate 1.6s linear infinite;
   }
   .schedule-slot-grace-inner {
-    @apply relative z-[1] rounded p-2 text-center;
+    @apply relative rounded p-2 text-center;
     border-radius: calc(var(--radius) - 1px);
   }
 }
