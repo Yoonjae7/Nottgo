@@ -1,12 +1,17 @@
 "use client"
 
+"use client"
+
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
-import { buggySchedule, buggyStops, fridayExceptionTimes } from "@/lib/data"
+import { buggySchedule, buggyStops, fridayExceptionTimes, getBuggyNextArrival } from "@/lib/data"
 import { addMinutes, format, parse } from "date-fns"
+import { getBuggySlotVisual } from "@/lib/scheduleSlotVisual"
+import { ScheduleTimeSlot } from "./ScheduleTimeSlot"
 
 interface FullBuggyScheduleProps {
   onClose: () => void
@@ -14,6 +19,14 @@ interface FullBuggyScheduleProps {
 }
 
 export default function FullBuggySchedule({ onClose, isFriday }: FullBuggyScheduleProps) {
+  const [now, setNow] = useState(() => new Date())
+
+  useEffect(() => {
+    setNow(new Date())
+    const id = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
   const calculateTime = (baseTime: string, stopIndex: number) => {
     const date = parse(baseTime, "HH:mm", new Date())
     return format(addMinutes(date, 3 * stopIndex), "HH:mm")
@@ -50,14 +63,39 @@ export default function FullBuggySchedule({ onClose, isFriday }: FullBuggySchedu
                 const isFridayException = isFriday && fridayExceptionTimes.includes(time)
                 return (
                   <TableRow key={time} className={isFridayException ? "bg-red-50" : ""}>
-                    {buggyStops.map((_, index) => (
-                      <TableCell
-                        key={`${time}-${index}`}
-                        className={`text-sm py-2 text-center ${isFridayException ? "text-red-500" : ""}`}
-                      >
-                        {isFridayException ? "-" : calculateTime(time, index)}
-                      </TableCell>
-                    ))}
+                    {buggyStops.map((_, index) => {
+                      if (isFridayException) {
+                        return (
+                          <TableCell
+                            key={`${time}-${index}`}
+                            className="text-sm py-2 text-center text-red-500"
+                          >
+                            -
+                          </TableCell>
+                        )
+                      }
+                      const cellTime = calculateTime(time, index)
+                      const nextForStop = getBuggyNextArrival(index, now, isFriday)
+                      const visual = getBuggySlotVisual(
+                        cellTime,
+                        nextForStop,
+                        now,
+                      )
+                      return (
+                        <TableCell
+                          key={`${time}-${index}`}
+                          className="p-1.5 text-center align-top"
+                        >
+                          <ScheduleTimeSlot
+                            visual={visual}
+                            className="w-full min-w-0 text-sm"
+                            tabularNums
+                          >
+                            {cellTime}
+                          </ScheduleTimeSlot>
+                        </TableCell>
+                      )
+                    })}
                   </TableRow>
                 )
               })}

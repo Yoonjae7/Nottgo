@@ -105,3 +105,33 @@
   0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
   40% { transform: translateY(-3px); opacity: 1; }
 }
+
+/* Current clock minute: moving segment along the edge (distinct from solid "next" ring) */
+@keyframes schedule-grace-rotate {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@layer components {
+  .schedule-slot-grace-outer {
+    @apply relative z-0 overflow-hidden rounded p-[2px];
+  }
+  .schedule-slot-grace-outer::before {
+    content: "";
+    @apply pointer-events-none absolute;
+    z-index: 0;
+    inset: -100%;
+    background: conic-gradient(
+      from 0deg,
+      hsl(var(--primary)) 0deg,
+      hsl(var(--primary)) 2.5deg,
+      transparent 2.5deg 18deg
+    );
+    animation: schedule-grace-rotate 1.6s linear infinite;
+  }
+  .schedule-slot-grace-inner {
+    @apply relative z-[1] rounded p-2 text-center;
+    border-radius: calc(var(--radius) - 1px);
+  }
+}

@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import { buggyStops } from "@/lib/data"
+import { getBuggySlotVisual } from "@/lib/scheduleSlotVisual"
+import { ScheduleTimeSlot } from "./ScheduleTimeSlot"
 
 interface BuggyScheduleDisplayProps {
   nextArrival: string | null
@@ -23,7 +25,6 @@ export default function BuggyScheduleDisplay({
   currentTime,
 }: BuggyScheduleDisplayProps) {
   const stopName = buggyStops[stopIndex] ?? "Stop"
-  const currentHm = format(currentTime, "HH:mm")
 
   const arrivalCountdownLabel = (() => {
     if (scheduleType !== "Weekday" || !nextArrival) return null
@@ -38,19 +39,6 @@ export default function BuggyScheduleDisplay({
     }
     return `In ${mins} minutes`
   })()
-
-  const isTimePassed = (timeString: string): boolean => {
-    const [hours, minutes] = timeString.split(":").map(Number)
-    const now = new Date(currentTime)
-    const scheduleTime = new Date(now)
-    scheduleTime.setHours(hours, minutes, 0, 0)
-
-    if (hours === 0 || (hours < 6 && now.getHours() >= 20)) {
-      scheduleTime.setDate(scheduleTime.getDate() + 1)
-    }
-
-    return scheduleTime < now
-  }
 
   const scheduleBadgeLabel =
     scheduleType === "Weekday"
@@ -117,23 +105,11 @@ export default function BuggyScheduleDisplay({
               <h3 className="text-sm font-semibold mb-2">All arrivals today:</h3>
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 text-sm">
                 {arrivalTimes.map((time) => {
-                  const passed = isTimePassed(time)
-                  const isNext = time === nextArrival
-                  const isGraceMinute = time === currentHm
-                  const isHighlighted = !passed && (isNext || isGraceMinute)
+                  const visual = getBuggySlotVisual(time, nextArrival, currentTime)
                   return (
-                    <div
-                      key={time}
-                      className={`rounded p-2 text-center relative tabular-nums ${
-                        passed
-                          ? "bg-red-100 text-red-600 opacity-60 dark:bg-red-950/40 dark:text-red-300"
-                          : isHighlighted
-                            ? "ring-2 ring-primary bg-primary/10"
-                            : "bg-gray-100 dark:bg-muted/60"
-                      }`}
-                    >
+                    <ScheduleTimeSlot key={time} visual={visual}>
                       {time}
-                    </div>
+                    </ScheduleTimeSlot>
                   )
                 })}
               </div>

@@ -1,11 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { busSchedule, busDestinations, type ScheduleType } from "@/lib/data"
+import { busSchedule, busDestinations, getBusNextDeparture, type ScheduleType } from "@/lib/data"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { getBusSlotVisual } from "@/lib/scheduleSlotVisual"
+import { ScheduleTimeSlot } from "./ScheduleTimeSlot"
 
 interface FullBusScheduleProps {
   destination: string
@@ -14,47 +16,72 @@ interface FullBusScheduleProps {
 
 export default function FullBusSchedule({ destination, onClose }: FullBusScheduleProps) {
   const [currentTab, setCurrentTab] = useState<ScheduleType>("weekday")
+  const [now, setNow] = useState(() => new Date())
   const schedule = busSchedule[destination]
   const destinationName = busDestinations.find((d) => d.id === destination)?.name || destination
 
-  const renderSchedule = (scheduleType: ScheduleType) => (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="text-xs">Direction</TableHead>
-          <TableHead className="text-xs">Time</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {schedule[scheduleType].out.length > 0 ? (
-          schedule[scheduleType].out.map((entry) => (
-            <TableRow key={`out-${entry.time}`}>
+  useEffect(() => {
+    setNow(new Date())
+    const id = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  const renderSchedule = (scheduleType: ScheduleType) => {
+    const nextOut = getBusNextDeparture(destination, scheduleType, "out", now)
+    const nextIn = getBusNextDeparture(destination, scheduleType, "in", now)
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="text-xs">Direction</TableHead>
+            <TableHead className="text-xs">Time</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {schedule[scheduleType].out.length > 0 ? (
+            schedule[scheduleType].out.map((entry) => {
+              const visual = getBusSlotVisual(entry.time, nextOut, now)
+              return (
+                <TableRow key={`out-${entry.time}`}>
+                  <TableCell className="text-sm py-2">Outbound</TableCell>
+                  <TableCell className="p-1.5 align-top">
+                    <ScheduleTimeSlot visual={visual} className="w-full min-w-0 text-sm" tabularNums>
+                      {entry.time}
+                    </ScheduleTimeSlot>
+                  </TableCell>
+                </TableRow>
+              )
+            })
+          ) : (
+            <TableRow>
               <TableCell className="text-sm py-2">Outbound</TableCell>
-              <TableCell className="text-sm py-2">{entry.time}</TableCell>
+              <TableCell className="text-sm py-2 text-gray-500">No service</TableCell>
             </TableRow>
-          ))
-        ) : (
-          <TableRow>
-            <TableCell className="text-sm py-2">Outbound</TableCell>
-            <TableCell className="text-sm py-2 text-gray-500">No service</TableCell>
-          </TableRow>
-        )}
-        {schedule[scheduleType].in.length > 0 ? (
-          schedule[scheduleType].in.map((entry) => (
-            <TableRow key={`in-${entry.time}`}>
+          )}
+          {schedule[scheduleType].in.length > 0 ? (
+            schedule[scheduleType].in.map((entry) => {
+              const visual = getBusSlotVisual(entry.time, nextIn, now)
+              return (
+                <TableRow key={`in-${entry.time}`}>
+                  <TableCell className="text-sm py-2">Inbound</TableCell>
+                  <TableCell className="p-1.5 align-top">
+                    <ScheduleTimeSlot visual={visual} className="w-full min-w-0 text-sm" tabularNums>
+                      {entry.time}
+                    </ScheduleTimeSlot>
+                  </TableCell>
+                </TableRow>
+              )
+            })
+          ) : (
+            <TableRow>
               <TableCell className="text-sm py-2">Inbound</TableCell>
-              <TableCell className="text-sm py-2">{entry.time}</TableCell>
+              <TableCell className="text-sm py-2 text-gray-500">No service</TableCell>
             </TableRow>
-          ))
-        ) : (
-          <TableRow>
-            <TableCell className="text-sm py-2">Inbound</TableCell>
-            <TableCell className="text-sm py-2 text-gray-500">No service</TableCell>
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
-  )
+          )}
+        </TableBody>
+      </Table>
+    )
+  }
 
   return (
     <Card className="w-full">

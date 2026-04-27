@@ -3,6 +3,8 @@ import { busDestinations } from "@/lib/data"
 import { Badge } from "@/components/ui/badge"
 import { format, parse } from "date-fns"
 import type { ScheduleType, ScheduleEntry } from "@/lib/data"
+import { getBusSlotVisual } from "@/lib/scheduleSlotVisual"
+import { ScheduleTimeSlot } from "./ScheduleTimeSlot"
 
 interface BusScheduleDisplayProps {
   destination: string
@@ -36,9 +38,6 @@ export default function BusScheduleDisplay({
     ? `Campus → ${destinationName}` 
     : `${destinationName} → Campus`
 
-  /** Same as wall clock HH:mm — used so the scheduled minute still highlights after "next" moves (see getBusNextDeparture strict `>`). */
-  const currentHm = format(currentTime, "HH:mm")
-
   const arrivalCountdownLabel = (() => {
     if (!nextDeparture) return null
     const departureAt = parse(nextDeparture, "HH:mm", currentTime)
@@ -52,12 +51,6 @@ export default function BusScheduleDisplay({
     }
     return `In ${mins} minutes`
   })()
-
-  // Check if a time has passed
-  const isTimePassed = (timeString: string): boolean => {
-    const currentTimeString = format(currentTime, "HH:mm")
-    return timeString < currentTimeString
-  }
 
   // Only show badge for vans, not for buses or regular services
   const getServiceBadge = (serviceType: string) => {
@@ -120,25 +113,12 @@ export default function BusScheduleDisplay({
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 text-sm">
             {schedule.length > 0 ? (
               schedule.map((entry) => {
-                const isPassed = isTimePassed(entry.time)
-                const isNext = entry.time === nextDeparture
-                /** During this clock minute the bus may still arrive; nextDeparture already skips to the following slot (see `>` in getBusNextDeparture). */
-                const isGraceMinute = entry.time === currentHm
-                const isHighlighted = !isPassed && (isNext || isGraceMinute)
+                const visual = getBusSlotVisual(entry.time, nextDeparture, currentTime)
                 return (
-                  <div 
-                    key={entry.time} 
-                    className={`rounded p-2 text-center relative ${
-                      isPassed 
-                        ? "bg-red-100 text-red-600 opacity-60" 
-                        : isHighlighted
-                        ? "ring-2 ring-primary bg-primary/10" 
-                        : "bg-gray-100"
-                    }`}
-                  >
+                  <ScheduleTimeSlot key={entry.time} visual={visual} tabularNums={false}>
                     {entry.time}
                     {getServiceBadge(entry.serviceType)}
-                  </div>
+                  </ScheduleTimeSlot>
                 )
               })
             ) : (
