@@ -1,12 +1,13 @@
 /**
- * Remaining time until departure/arrival, using floored minutes so we never
- * overstate how much time is left (then broken into hours + remainder minutes).
+ * Remaining time until departure/arrival. We round minutes UP so the figure
+ * lands on the bus's actual clock minute (e.g. at 00:47:25 a 09:00 departure
+ * shows "in 8 hours 13 minutes", not 12).
  */
 export function formatArrivalCountdown(diffMs: number): string {
   if (diffMs <= 0) return "Soon"
   if (diffMs <= 60_000) return "Soon"
 
-  const totalMins = Math.floor(diffMs / 60_000)
+  const totalMins = Math.ceil(diffMs / 60_000)
 
   if (totalMins < 1) return "Soon"
   if (totalMins < 60) {
