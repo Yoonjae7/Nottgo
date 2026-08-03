@@ -88,13 +88,14 @@ export default function Home() {
 
       <Card className="relative w-full max-w-[95%] sm:max-w-md rounded-2xl border-border/60 bg-card/85 shadow-xl shadow-slate-300/25 ring-1 ring-slate-200/70 backdrop-blur-md dark:bg-card/90 dark:shadow-black/40 dark:ring-white/10">
         <CardHeader className="border-b border-border/50 bg-gradient-to-br from-card via-card to-primary/[0.06] px-4 pb-4 pt-4 dark:to-primary/10 sm:px-5">
+          <h1 className="sr-only">NottinghamGo — University of Nottingham Malaysia Shuttle App by Yoonjae Lee</h1>
           <div
             className="flex items-center justify-between gap-3 sm:gap-4"
             aria-label="University and Students' Association branding"
           >
             <Image
               src="/branding/nottingham-brand-blue-horizontal.png"
-              alt="University of Nottingham — UK, China, Malaysia"
+              alt="University of Nottingham Malaysia"
               width={450}
               height={173}
               className="h-12 w-auto shrink object-contain object-left sm:h-14 max-h-[3.6rem] sm:max-h-[4.1rem] max-w-[min(72%,19rem)] sm:max-w-[min(80%,21rem)]"
