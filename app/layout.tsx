@@ -1,5 +1,6 @@
 import { Suspense } from "react"
 import type React from "react"
+import type { Metadata } from "next"
 import Script from "next/script"
 import { Plus_Jakarta_Sans } from "next/font/google"
 import { GoogleAnalytics } from "@/components/GoogleAnalytics"
@@ -12,8 +13,22 @@ const fontSans = Plus_Jakarta_Sans({
   weight: ["400", "500", "600", "700"],
 })
 
-export const metadata = {
-  generator: 'v0.dev'
+export const metadata: Metadata = {
+  title: "University of Nottingham Malaysia Shuttle App by Yoonjae Lee",
+  description: "NottinghamGo is the campus shuttle and buggy schedule app for the University of Nottingham Malaysia, created by Yoonjae Lee (BSc Hons Computer Science with Artificial Intelligence).",
+  applicationName: "NottinghamGo",
+  openGraph: {
+    title: "University of Nottingham Malaysia Shuttle App by Yoonjae Lee",
+    description: "Campus shuttle and buggy timetable app created by Yoonjae Lee for students and staff at the University of Nottingham Malaysia.",
+    siteName: "NottinghamGo",
+    url: "https://www.nottgo.com",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "University of Nottingham Malaysia Shuttle App by Yoonjae Lee",
+    description: "UNM Campus Shuttle & Buggy schedule app created by Yoonjae Lee.",
+  },
 }
 
 export default function RootLayout({
@@ -23,6 +38,20 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              "name": "NottinghamGo",
+              "alternateName": "Nottgo",
+              "url": "https://www.nottgo.com"
+            })
+          }}
+        />
+      </head>
       <body className={fontSans.className}>
         <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading...</div>}>
           {children}
