@@ -272,6 +272,12 @@ export default function Home() {
           </div>
         </CardContent>
       </Card>
+
+      <footer className="mt-6 text-center text-xs text-muted-foreground/80 max-w-xs sm:max-w-sm leading-relaxed px-2">
+        <p>
+          By Yoonjae Lee (Computer Science with AI Year 1 25/26) for my loving friends and professors at the University of Nottingham Malaysia Campus
+        </p>
+      </footer>
     </main>
   )
 }
