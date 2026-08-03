@@ -17,6 +17,9 @@ export const metadata: Metadata = {
   title: "University of Nottingham Malaysia Shuttle App by Yoonjae Lee",
   description: "NottinghamGo is the campus shuttle and buggy schedule app for the University of Nottingham Malaysia, created by Yoonjae Lee (BSc Hons Computer Science with Artificial Intelligence).",
   applicationName: "NottinghamGo",
+  verification: {
+    google: "YR7nJYMZt-uME_IjbEVBWZmvCxou5FhIqDABpSc--uU",
+  },
   openGraph: {
     title: "University of Nottingham Malaysia Shuttle App by Yoonjae Lee",
     description: "Campus shuttle and buggy timetable app created by Yoonjae Lee for students and staff at the University of Nottingham Malaysia.",
