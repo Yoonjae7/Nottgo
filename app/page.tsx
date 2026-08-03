@@ -40,7 +40,7 @@ export default function Home() {
   useEffect(() => {
     // Set mounted to true after component mounts on client
     setMounted(true)
-    
+
     // Initialize time and schedule type immediately
     const now = new Date()
     setCurrentTime(now)
@@ -179,11 +179,11 @@ export default function Home() {
               <div className="space-y-4">
                 <div>
                   <p className="text-sm text-gray-600 mb-2">Select your destination:</p>
-                  <Select 
+                  <Select
                     onValueChange={(value) => {
                       setSelectedDestination(value)
                       setSelectedDirection(null) // Reset direction when destination changes
-                    }} 
+                    }}
                     defaultValue={selectedDestination}
                   >
                     <SelectTrigger className="w-full">
@@ -198,7 +198,7 @@ export default function Home() {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 {selectedDestination && (
                   <div>
                     <p className="text-sm text-gray-600 mb-2">Select direction:</p>
@@ -274,8 +274,14 @@ export default function Home() {
       </Card>
 
       <footer className="mt-6 text-center text-xs text-muted-foreground/80 max-w-xs sm:max-w-sm leading-relaxed px-2">
-        <p>
-          By Yoonjae Lee (Computer Science with AI Year 1 25/26) for my loving friends and professors at the University of Nottingham Malaysia Campus
+        <p className="font-medium text-foreground/85">
+          NottinghamGo <span className="font-normal text-muted-foreground">by Yoonjae Lee</span>
+        </p>
+        <p className="text-[11px] text-muted-foreground/90 mt-0.5">
+          BSc (Hons) Computer Science with Artificial Intelligence
+        </p>
+        <p className="text-[11px] text-muted-foreground/80 italic mt-1">
+          For the great convenience of students and staff at the University of Nottingham Malaysia.
         </p>
       </footer>
     </main>
