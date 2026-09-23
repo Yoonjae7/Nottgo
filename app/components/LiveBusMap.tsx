@@ -6,6 +6,21 @@ import { Circle, CircleMarker, MapContainer, TileLayer, useMap } from "react-lea
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 
+const cartoBasemapKey = process.env.NEXT_PUBLIC_CARTO_BASEMAP_KEY?.trim()
+const basemap = cartoBasemapKey
+  ? {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      url: `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=${encodeURIComponent(cartoBasemapKey)}`,
+      subdomains: "abcd",
+    }
+  : {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      subdomains: undefined,
+    }
+
 type Point = {
   carNumber: string
   lat: number
@@ -410,9 +425,9 @@ export default function LiveBusMap({ vehicles, trackKey }: Props) {
           keyboard
         >
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
-            subdomains="abcd"
+            attribution={basemap.attribution}
+            url={basemap.url}
+            subdomains={basemap.subdomains}
             maxZoom={20}
           />
           <UserLocationOnMap onPosition={onPosition} onError={onGeoError} />
