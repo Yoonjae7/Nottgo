@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ChevronLeft, ChevronRight, Clock3, Pause, Play, RotateCcw, Trophy, X } from "lucide-react"
 import * as THREE from "three"
+import { lateDodgeTimeToCone, NEAR_MISS_DODGE_WINDOW_SECONDS } from "@/lib/nearMiss"
 
 type Phase = "ready" | "playing" | "paused" | "game-over"
 
@@ -16,6 +17,7 @@ type Entity = {
   kind: "clock" | "cone"
   object: THREE.Group
   spin: THREE.Object3D | null
+  lastSecondDodgeAt: number | null
 }
 
 const LANES = [-2.55, 0, 2.55] as const
@@ -422,7 +424,32 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
 
     const steer = (direction: -1 | 1) => {
       if (phaseValue !== "playing") return
-      laneIndex = THREE.MathUtils.clamp(laneIndex + direction, 0, LANES.length - 1)
+      const nextLaneIndex = THREE.MathUtils.clamp(laneIndex + direction, 0, LANES.length - 1)
+      if (nextLaneIndex === laneIndex) return
+
+      // A near miss must be a late dodge from a lane that would have hit the cone.
+      // Mark only the closest threatened cone, not every cone beside the bus.
+      let dodgedCone: Entity | null = null
+      let nearestTimeToCone = NEAR_MISS_DODGE_WINDOW_SECONDS
+      for (const entity of entities) {
+        if (entity.kind !== "cone") continue
+        const timeToCone = lateDodgeTimeToCone({
+          coneX: entity.object.position.x,
+          coneZ: entity.object.position.z,
+          busX: bus.position.x,
+          busZ: BUS_Z,
+          currentLaneX: targetX,
+          nextLaneX: LANES[nextLaneIndex],
+          worldSpeed,
+        })
+        if (timeToCone !== null && timeToCone <= nearestTimeToCone) {
+          dodgedCone = entity
+          nearestTimeToCone = timeToCone
+        }
+      }
+      if (dodgedCone) dodgedCone.lastSecondDodgeAt = drivingSeconds
+
+      laneIndex = nextLaneIndex
       targetX = LANES[laneIndex]
     }
 
@@ -437,7 +464,12 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
       object.position.x = LANES[randomLane]
       object.position.z = -Math.max(62, worldSpeed * 2.25)
       scene.add(object)
-      entities.push({ kind: isClock ? "clock" : "cone", object, spin: isClock ? object : null })
+      entities.push({
+        kind: isClock ? "clock" : "cone",
+        object,
+        spin: isClock ? object : null,
+        lastSecondDodgeAt: null,
+      })
     }
 
     const resize = () => {
@@ -527,8 +559,11 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
             }
           } else if (
             entity.kind === "cone" &&
+            entity.lastSecondDodgeAt !== null &&
+            drivingSeconds - entity.lastSecondDodgeAt <= NEAR_MISS_DODGE_WINDOW_SECONDS + 0.2 &&
             previousZ <= BUS_Z + 1.55 &&
             entity.object.position.z > BUS_Z + 1.55 &&
+            lateralDistance >= 1.08 &&
             lateralDistance <= 3.1
           ) {
             entities.splice(index, 1)
@@ -669,7 +704,7 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
             </h3>
             <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-white/90">
               {phase === "ready"
-                ? "Change lanes to collect clocks for 50 points. Avoid the cones."
+                ? "Clocks +50. Dodge a cone at the last second for +25. Don't crash."
                 : phase === "paused"
                   ? "Your route is waiting."
                   : nearMissCount > 0
