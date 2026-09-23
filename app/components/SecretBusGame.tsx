@@ -20,50 +20,37 @@ type Entity = {
 
 const LANES = [-2.55, 0, 2.55] as const
 const BUS_Z = 3
-const START_SPEED = 13
-const MAX_SPEED = 60
-const ACCELERATION = 0.55
+const START_SPEED_KMH = 20
+const MAX_SPEED_KMH = 100
+const ACCELERATION_KMH = 0.9
+const START_WORLD_SPEED = 13
+const MAX_WORLD_SPEED = 78
+const NEAR_MISS_POINTS = 25
 
-function Speedometer({ speed }: { speed: number }) {
-  const speedKmh = speed * 3.6
-  const fraction = Math.min(speed / MAX_SPEED, 1)
-  const arcLength = Math.PI * 42
-  const needleAngle = -90 + fraction * 180
+function worldSpeedFor(speedKmh: number): number {
+  const progress = (speedKmh - START_SPEED_KMH) / (MAX_SPEED_KMH - START_SPEED_KMH)
+  return START_WORLD_SPEED + (MAX_WORLD_SPEED - START_WORLD_SPEED) * Math.pow(Math.max(0, progress), 1.1)
+}
+
+function Speedometer({ speedKmh }: { speedKmh: number }) {
+  const fraction = Math.min((speedKmh - START_SPEED_KMH) / (MAX_SPEED_KMH - START_SPEED_KMH), 1)
 
   return (
     <div
-      className="w-[112px] rounded-2xl border border-white/15 bg-[#10263b]/85 px-2 pb-2 pt-1 text-center shadow-xl backdrop-blur-md"
+      className="w-[98px] rounded-xl border border-white/20 bg-[#10263b]/90 px-2 py-1.5 text-center shadow-lg backdrop-blur-sm sm:w-[108px]"
       role="meter"
       aria-label="Bus speed"
-      aria-valuemin={0}
-      aria-valuemax={MAX_SPEED * 3.6}
+      aria-valuemin={START_SPEED_KMH}
+      aria-valuemax={MAX_SPEED_KMH}
       aria-valuenow={Number(speedKmh.toFixed(1))}
       aria-valuetext={`${speedKmh.toFixed(1)} kilometers per hour`}
     >
-      <svg viewBox="0 0 112 60" className="mx-auto h-[52px] w-full" aria-hidden="true">
-        <path d="M 14 52 A 42 42 0 0 1 98 52" fill="none" stroke="#ffffff" strokeOpacity="0.2" strokeWidth="5" strokeLinecap="round" />
-        <path
-          d="M 14 52 A 42 42 0 0 1 98 52"
-          fill="none"
-          stroke="#6ee7b7"
-          strokeWidth="5"
-          strokeLinecap="round"
-          strokeDasharray={`${fraction * arcLength} ${arcLength}`}
-        />
-        <line
-          x1="56"
-          y1="51"
-          x2="56"
-          y2="19"
-          stroke="#ffffff"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          transform={`rotate(${needleAngle} 56 51)`}
-        />
-        <circle cx="56" cy="51" r="4" fill="#6ee7b7" />
-      </svg>
-      <p className="-mt-3 font-mono text-xl font-black tabular-nums leading-none text-white">{speedKmh.toFixed(1)}</p>
-      <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.18em] text-white/70">km/h</p>
+      <p className="font-mono text-lg font-black tabular-nums leading-tight text-white sm:text-xl">
+        {speedKmh.toFixed(1)} <span className="text-[9px] font-semibold text-white/65">km/h</span>
+      </p>
+      <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/20" aria-hidden="true">
+        <div className="h-full rounded-full bg-emerald-300 transition-[width] duration-100" style={{ width: `${fraction * 100}%` }} />
+      </div>
     </div>
   )
 }
@@ -256,7 +243,9 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
   const [score, setScore] = useState(0)
   const [best, setBest] = useState(0)
   const [collected, setCollected] = useState(0)
-  const [displaySpeed, setDisplaySpeed] = useState(START_SPEED)
+  const [displaySpeedKmh, setDisplaySpeedKmh] = useState(START_SPEED_KMH)
+  const [nearMissCount, setNearMissCount] = useState(0)
+  const [nearMissFlash, setNearMissFlash] = useState(false)
 
   closeRef.current = onClose
 
@@ -275,9 +264,9 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
 
     const scene = new THREE.Scene()
     scene.background = new THREE.Color("#9dd9ef")
-    scene.fog = new THREE.Fog("#9dd9ef", 42, 155)
+    scene.fog = new THREE.Fog("#9dd9ef", 42, 205)
 
-    const camera = new THREE.PerspectiveCamera(54, 1, 0.1, 230)
+    const camera = new THREE.PerspectiveCamera(54, 1, 0.1, 260)
     camera.position.set(0, 6.15, 12.5)
     camera.lookAt(0, 1.1, -8)
 
@@ -333,7 +322,7 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
     const movingWorld: THREE.Object3D[] = []
     const dashMaterial = new THREE.MeshBasicMaterial({ color: "#f8fafc" })
     for (const x of [-1.45, 1.45]) {
-      for (let index = 0; index < 20; index++) {
+      for (let index = 0; index < 28; index++) {
         const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.11, 3.3), dashMaterial)
         dash.rotation.x = -Math.PI / 2
         dash.position.set(x, 0.035, 15 - index * 7)
@@ -342,7 +331,7 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
       }
     }
 
-    for (let index = 0; index < 18; index++) {
+    for (let index = 0; index < 25; index++) {
       const z = 8 - index * 7.2
       const side = index % 2 === 0 ? -1 : 1
       const object = index % 3 === 0
@@ -360,9 +349,13 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
     let targetX = LANES[laneIndex]
     let distance = 0
     let clocks = 0
-    let speed = START_SPEED
+    let bonusPoints = 0
+    let nearMisses = 0
+    let speedKmh = START_SPEED_KMH
+    let worldSpeed = worldSpeedFor(speedKmh)
     let drivingSeconds = 0
     let spawnTimer = 0.7
+    let nearMissTimeout: number | undefined
     let phaseValue: Phase = "ready"
     let elapsedSinceUi = 0
     let lastTime = performance.now()
@@ -400,15 +393,21 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
       targetX = LANES[laneIndex]
       distance = 0
       clocks = 0
-      speed = START_SPEED
+      bonusPoints = 0
+      nearMisses = 0
+      speedKmh = START_SPEED_KMH
+      worldSpeed = worldSpeedFor(speedKmh)
       drivingSeconds = 0
       spawnTimer = 0.65
+      window.clearTimeout(nearMissTimeout)
+      setNearMissFlash(false)
       bus.position.x = 0
       bus.position.y = 0
       bus.rotation.set(0, 0, 0)
       setScore(0)
       setCollected(0)
-      setDisplaySpeed(START_SPEED)
+      setNearMissCount(0)
+      setDisplaySpeedKmh(START_SPEED_KMH)
     }
 
     const start = () => {
@@ -430,11 +429,13 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
     apiRef.current = { start, togglePause, steer }
 
     const spawn = () => {
-      const isClock = Math.random() < 0.38
+      const currentScore = Math.floor(distance) + clocks * 50 + bonusPoints
+      const coneChance = Math.min(0.82, 0.62 + currentScore * 0.0001)
+      const isClock = Math.random() > coneChance
       const object = isClock ? createClock() : createCone()
       const randomLane = Math.floor(Math.random() * LANES.length)
       object.position.x = LANES[randomLane]
-      object.position.z = -Math.max(62, speed * 2.25)
+      object.position.z = -Math.max(62, worldSpeed * 2.25)
       scene.add(object)
       entities.push({ kind: isClock ? "clock" : "cone", object, spin: isClock ? object : null })
     }
@@ -474,12 +475,14 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
       const wheelMeshes = bus.userData.wheels as THREE.Mesh[]
       if (phaseValue === "playing") {
         drivingSeconds += delta
-        speed = Math.min(MAX_SPEED, START_SPEED + drivingSeconds * ACCELERATION)
-        distance += speed * delta * 0.62
+        speedKmh = Math.min(MAX_SPEED_KMH, START_SPEED_KMH + drivingSeconds * ACCELERATION_KMH)
+        worldSpeed = worldSpeedFor(speedKmh)
+        distance += worldSpeed * delta * 0.62
         spawnTimer -= delta
         if (spawnTimer <= 0) {
           spawn()
-          spawnTimer = Math.max(0.62, 1.18 - speed * 0.018) + Math.random() * 0.32
+          const currentScore = Math.floor(distance) + clocks * 50 + bonusPoints
+          spawnTimer = Math.max(0.42, 1.16 - worldSpeed * 0.009 - currentScore * 0.00028) + Math.random() * 0.25
         }
 
         const xDelta = targetX - bus.position.x
@@ -488,38 +491,55 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
         bus.rotation.y = THREE.MathUtils.lerp(bus.rotation.y, xDelta * 0.025, delta * 8)
         bus.position.y = Math.sin(now * 0.008) * 0.025
         wheelMeshes.forEach((wheel) => {
-          wheel.rotation.x -= speed * delta * 0.75
+          wheel.rotation.x -= worldSpeed * delta * 0.75
         })
 
         movingWorld.forEach((object) => {
-          object.position.z += speed * delta
-          if (object.position.z > 18) object.position.z -= 140
+          object.position.z += worldSpeed * delta
+          if (object.position.z > 18) object.position.z -= 196
         })
 
         for (let index = entities.length - 1; index >= 0; index--) {
           const entity = entities[index]
-          entity.object.position.z += speed * delta
+          const previousZ = entity.object.position.z
+          entity.object.position.z += worldSpeed * delta
           if (entity.spin) {
             entity.spin.rotation.y += delta * 2.7
             entity.spin.position.y = 1.05 + Math.sin(now * 0.006 + index) * 0.12
           }
 
-          const closeOnZ = Math.abs(entity.object.position.z - BUS_Z) < 1.55
-          const closeOnX = Math.abs(entity.object.position.x - bus.position.x) < 1.08
-          if (closeOnZ && closeOnX) {
+          const crossedBus = previousZ <= BUS_Z + 1.55 && entity.object.position.z >= BUS_Z - 1.55
+          const lateralDistance = Math.abs(entity.object.position.x - bus.position.x)
+          if (crossedBus && lateralDistance < 1.08) {
             entities.splice(index, 1)
             if (entity.kind === "clock") {
               clocks += 1
               setCollected(clocks)
               removeEntity(entity)
             } else {
-              const finalScore = Math.floor(distance) + clocks * 50
+              const finalScore = Math.floor(distance) + clocks * 50 + bonusPoints
               bus.rotation.z = entity.object.position.x > bus.position.x ? -0.28 : 0.28
               removeEntity(entity)
               changePhase("game-over")
               setScore(finalScore)
               updateBest(finalScore)
+              break
             }
+          } else if (
+            entity.kind === "cone" &&
+            previousZ <= BUS_Z + 1.55 &&
+            entity.object.position.z > BUS_Z + 1.55 &&
+            lateralDistance <= 3.1
+          ) {
+            entities.splice(index, 1)
+            removeEntity(entity)
+            bonusPoints += NEAR_MISS_POINTS
+            nearMisses += 1
+            setNearMissCount(nearMisses)
+            setScore(Math.floor(distance) + clocks * 50 + bonusPoints)
+            setNearMissFlash(true)
+            window.clearTimeout(nearMissTimeout)
+            nearMissTimeout = window.setTimeout(() => setNearMissFlash(false), 900)
           } else if (entity.object.position.z > 13) {
             entities.splice(index, 1)
             removeEntity(entity)
@@ -528,8 +548,8 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
 
         elapsedSinceUi += delta
         if (elapsedSinceUi > 0.1) {
-          setScore(Math.floor(distance) + clocks * 50)
-          setDisplaySpeed(speed)
+          setScore(Math.floor(distance) + clocks * 50 + bonusPoints)
+          setDisplaySpeedKmh(speedKmh)
           elapsedSinceUi = 0
         }
       } else if (phaseValue === "ready") {
@@ -537,6 +557,9 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
         bus.rotation.y = Math.sin(now * 0.0012) * 0.025
       }
 
+      const speedFraction = (speedKmh - START_SPEED_KMH) / (MAX_SPEED_KMH - START_SPEED_KMH)
+      camera.fov = THREE.MathUtils.lerp(camera.fov, 54 + speedFraction * 20, Math.min(1, delta * 2.5))
+      camera.updateProjectionMatrix()
       camera.position.x = THREE.MathUtils.lerp(camera.position.x, bus.position.x * 0.28, delta * 2.5)
       camera.lookAt(bus.position.x * 0.15, 1.0, -8)
       renderer.render(scene, camera)
@@ -547,6 +570,7 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
       window.cancelAnimationFrame(frameId)
       window.removeEventListener("keydown", onKeyDown)
       document.removeEventListener("visibilitychange", onVisibilityChange)
+      window.clearTimeout(nearMissTimeout)
       resizeObserver.disconnect()
       clearEntities()
       scene.traverse((child) => {
@@ -586,7 +610,7 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
         aria-hidden
       />
 
-      <header className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-4 sm:p-6">
+      <header className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-3 p-4 sm:p-6">
         <div className="min-w-0">
           <h2 className="text-xl font-black tracking-tight drop-shadow-md sm:text-3xl">NottGo: Campus Run</h2>
         </div>
@@ -601,29 +625,44 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
         </button>
       </header>
 
-      <div className="pointer-events-none absolute left-4 right-4 top-[5.4rem] flex justify-between gap-2 sm:left-6 sm:right-6 sm:top-24">
-        <div className="rounded-2xl border border-white/15 bg-[#10263b]/78 px-4 py-2 shadow-xl backdrop-blur-md">
+      <div className="pointer-events-none absolute left-4 right-4 top-[5.2rem] z-10 grid grid-cols-[1fr_auto_1fr] items-start gap-1 sm:left-6 sm:right-6 sm:top-24">
+        <div className="justify-self-start rounded-xl border border-white/15 bg-[#10263b]/78 px-3 py-2 shadow-lg backdrop-blur-sm">
           <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/55">Score</p>
-          <p className="font-mono text-xl font-black tabular-nums sm:text-2xl">{score.toString().padStart(4, "0")}</p>
+          <p className="font-mono text-lg font-black tabular-nums sm:text-2xl">{score.toString().padStart(4, "0")}</p>
         </div>
-        <div className="flex gap-2">
-          <div className="rounded-2xl border border-white/15 bg-[#10263b]/78 px-3 py-2 text-center shadow-xl backdrop-blur-md">
+        <div className="justify-self-center">
+          {phase === "playing" && <Speedometer speedKmh={displaySpeedKmh} />}
+        </div>
+        <div className="flex justify-self-end gap-1 sm:gap-2">
+          <div className="rounded-xl border border-white/15 bg-[#10263b]/78 px-2 py-2 text-center shadow-lg backdrop-blur-sm sm:px-3">
             <Clock3 className="mx-auto h-4 w-4 text-amber-300" />
             <p className="mt-0.5 font-mono text-sm font-black">{collected}</p>
           </div>
-          <div className="rounded-2xl border border-white/15 bg-[#10263b]/78 px-3 py-2 text-center shadow-xl backdrop-blur-md">
+          <div className="rounded-xl border border-white/15 bg-[#10263b]/78 px-2 py-2 text-center shadow-lg backdrop-blur-sm sm:px-3">
             <Trophy className="mx-auto h-4 w-4 text-emerald-300" />
             <p className="mt-0.5 font-mono text-sm font-black">{best}</p>
           </div>
         </div>
       </div>
 
-      <div className="pointer-events-none absolute left-1/2 top-[9.5rem] z-10 -translate-x-1/2 sm:top-24">
-        <Speedometer speed={displaySpeed} />
-      </div>
+      {nearMissFlash && phase === "playing" && (
+        <>
+          <div
+            className="pointer-events-none absolute inset-0 z-[15] animate-[nearMissGlow_900ms_ease-out_both] motion-reduce:animate-none"
+            aria-hidden="true"
+          />
+          <div
+            key={nearMissCount}
+            role="status"
+            className="pointer-events-none absolute left-1/2 top-[42%] z-[16] -translate-x-1/2 whitespace-nowrap rounded-full border border-emerald-200/60 bg-[#10263b]/90 px-4 py-2 text-sm font-black tracking-wide text-emerald-200 shadow-xl animate-[nearMissPop_900ms_ease-out_both] motion-reduce:animate-none"
+          >
+            NEAR MISS <span className="ml-1 text-white">+{NEAR_MISS_POINTS}</span>
+          </div>
+        </>
+      )}
 
       {phase !== "playing" && (
-        <div className="absolute inset-0 grid place-items-center bg-[#08131f]/55 px-5">
+        <div className="absolute inset-0 z-20 grid place-items-center bg-[#08131f]/55 px-5">
           <div className="w-full max-w-sm text-center drop-shadow-lg">
             <h3 className="text-3xl font-black tracking-tight sm:text-4xl">
               {phase === "game-over" ? `Score ${score}` : phase === "paused" ? "Paused" : "Ready to drive?"}
@@ -633,7 +672,9 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
                 ? "Change lanes to collect clocks for 50 points. Avoid the cones."
                 : phase === "paused"
                   ? "Your route is waiting."
-                  : "Watch for the cones on your next run."}
+                  : nearMissCount > 0
+                    ? `${nearMissCount} near misses earned ${nearMissCount * NEAR_MISS_POINTS} bonus points.`
+                    : "Watch for the cones on your next run."}
             </p>
             <button
               type="button"
@@ -649,7 +690,7 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
       )}
 
       {phase === "playing" && (
-        <div className="absolute inset-x-0 bottom-5 flex items-end justify-between px-5 sm:bottom-7 sm:px-8">
+        <div className="absolute inset-x-0 bottom-5 z-20 flex items-end justify-between px-5 sm:bottom-7 sm:px-8">
           <button
             type="button"
             onPointerDown={steerLeft}
