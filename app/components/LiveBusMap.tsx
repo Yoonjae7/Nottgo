@@ -427,7 +427,7 @@ export default function LiveBusMap({ vehicles, trackKey }: Props) {
           <TileLayer
             attribution={basemap.attribution}
             url={basemap.url}
-            subdomains={basemap.subdomains}
+            {...(basemap.subdomains ? { subdomains: basemap.subdomains } : {})}
             maxZoom={20}
           />
           <UserLocationOnMap onPosition={onPosition} onError={onGeoError} />
