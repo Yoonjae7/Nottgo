@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import dynamic from "next/dynamic"
 import Image from "next/image"
 import { format } from "date-fns"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -26,6 +27,8 @@ import FullBusSchedule from "./components/FullBusSchedule"
 import LiveBusErrorBoundary from "./components/LiveBusErrorBoundary"
 import LiveBusLocation from "./components/LiveBusLocation"
 
+const SecretBusGame = dynamic(() => import("./components/SecretBusGame"), { ssr: false })
+
 export default function Home() {
   const [selectedStop, setSelectedStop] = useState<number>(0)
   const [selectedDestination, setSelectedDestination] = useState<string>(busDestinations[0].id)
@@ -36,6 +39,7 @@ export default function Home() {
   const [isFriday, setIsFriday] = useState(false)
   const [isBuggy, setIsBuggy] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [showSecretGame, setShowSecretGame] = useState(false)
 
   useEffect(() => {
     // Set mounted to true after component mounts on client
@@ -101,13 +105,20 @@ export default function Home() {
               className="h-12 w-auto shrink object-contain object-left sm:h-14 max-h-[3.6rem] sm:max-h-[4.1rem] max-w-[min(72%,19rem)] sm:max-w-[min(80%,21rem)]"
               priority
             />
-            <Image
-              src="/branding/students-association-unm.png"
-              alt="Students' Association of the University of Nottingham Malaysia"
-              width={440}
-              height={176}
-              className="h-14 w-auto max-h-16 min-h-[3.35rem] shrink object-contain sm:h-16 sm:max-h-[4.25rem] sm:min-h-16 max-w-[min(76%,17.5rem)] sm:max-w-[min(82%,19.5rem)]"
-            />
+            <button
+              type="button"
+              onClick={() => setShowSecretGame(true)}
+              className="group shrink rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              aria-label="Students' Association of the University of Nottingham Malaysia"
+            >
+              <Image
+                src="/branding/students-association-unm.png"
+                alt="Students' Association of the University of Nottingham Malaysia"
+                width={440}
+                height={176}
+                className="h-14 w-auto max-h-16 min-h-[3.35rem] object-contain transition duration-200 group-hover:scale-[1.03] group-active:scale-[0.98] sm:h-16 sm:max-h-[4.25rem] sm:min-h-16 max-w-[min(76%,17.5rem)] sm:max-w-[min(82%,19.5rem)]"
+              />
+            </button>
           </div>
         </CardHeader>
         <CardContent className="pt-6">
@@ -262,7 +273,7 @@ export default function Home() {
                 )}
                 {!isBuggy && !showFullSchedule && (
                   <LiveBusErrorBoundary>
-                    <LiveBusLocation />
+                    <LiveBusLocation selectedDestination={selectedDestination} />
                   </LiveBusErrorBoundary>
                 )}
                 <Button onClick={() => setShowFullSchedule(true)} variant="outline" className="w-full text-sm">
@@ -285,6 +296,7 @@ export default function Home() {
           For the great convenience of students and staff at the University of Nottingham Malaysia.
         </p>
       </footer>
+      {showSecretGame && <SecretBusGame onClose={() => setShowSecretGame(false)} />}
     </main>
   )
 }

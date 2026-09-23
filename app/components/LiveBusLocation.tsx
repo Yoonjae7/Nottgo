@@ -74,7 +74,7 @@ function stubVehicleRow(plate: string): VehicleRow {
   }
 }
 
-export default function LiveBusLocation() {
+export default function LiveBusLocation({ selectedDestination }: { selectedDestination: string }) {
   const [data, setData] = useState<Payload | null>(null)
   const [loading, setLoading] = useState(true)
   const [lastFetch, setLastFetch] = useState<Date | null>(null)
@@ -384,7 +384,11 @@ export default function LiveBusLocation() {
         </div>
 
         {selectedPlate && (
-          <LiveBusMap vehicles={mapSlice} trackKey={selectedPlate} />
+          <LiveBusMap
+            vehicles={mapSlice}
+            trackKey={selectedPlate}
+            selectedDestination={selectedDestination}
+          />
         )}
 
         {selectedPlate && caption && (
