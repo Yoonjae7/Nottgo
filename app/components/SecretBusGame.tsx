@@ -21,7 +21,52 @@ type Entity = {
 const LANES = [-2.55, 0, 2.55] as const
 const BUS_Z = 3
 const START_SPEED = 13
-const MAX_SPEED = 30
+const MAX_SPEED = 60
+const ACCELERATION = 0.55
+
+function Speedometer({ speed }: { speed: number }) {
+  const speedKmh = speed * 3.6
+  const fraction = Math.min(speed / MAX_SPEED, 1)
+  const arcLength = Math.PI * 42
+  const needleAngle = -90 + fraction * 180
+
+  return (
+    <div
+      className="w-[112px] rounded-2xl border border-white/15 bg-[#10263b]/85 px-2 pb-2 pt-1 text-center shadow-xl backdrop-blur-md"
+      role="meter"
+      aria-label="Bus speed"
+      aria-valuemin={0}
+      aria-valuemax={MAX_SPEED * 3.6}
+      aria-valuenow={Number(speedKmh.toFixed(1))}
+      aria-valuetext={`${speedKmh.toFixed(1)} kilometers per hour`}
+    >
+      <svg viewBox="0 0 112 60" className="mx-auto h-[52px] w-full" aria-hidden="true">
+        <path d="M 14 52 A 42 42 0 0 1 98 52" fill="none" stroke="#ffffff" strokeOpacity="0.2" strokeWidth="5" strokeLinecap="round" />
+        <path
+          d="M 14 52 A 42 42 0 0 1 98 52"
+          fill="none"
+          stroke="#6ee7b7"
+          strokeWidth="5"
+          strokeLinecap="round"
+          strokeDasharray={`${fraction * arcLength} ${arcLength}`}
+        />
+        <line
+          x1="56"
+          y1="51"
+          x2="56"
+          y2="19"
+          stroke="#ffffff"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          transform={`rotate(${needleAngle} 56 51)`}
+        />
+        <circle cx="56" cy="51" r="4" fill="#6ee7b7" />
+      </svg>
+      <p className="-mt-3 font-mono text-xl font-black tabular-nums leading-none text-white">{speedKmh.toFixed(1)}</p>
+      <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.18em] text-white/70">km/h</p>
+    </div>
+  )
+}
 
 function makeTextTexture(
   lines: string[],
@@ -211,7 +256,7 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
   const [score, setScore] = useState(0)
   const [best, setBest] = useState(0)
   const [collected, setCollected] = useState(0)
-  const [pace, setPace] = useState("1.0")
+  const [displaySpeed, setDisplaySpeed] = useState(START_SPEED)
 
   closeRef.current = onClose
 
@@ -230,9 +275,9 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
 
     const scene = new THREE.Scene()
     scene.background = new THREE.Color("#9dd9ef")
-    scene.fog = new THREE.Fog("#9dd9ef", 32, 92)
+    scene.fog = new THREE.Fog("#9dd9ef", 42, 155)
 
-    const camera = new THREE.PerspectiveCamera(54, 1, 0.1, 160)
+    const camera = new THREE.PerspectiveCamera(54, 1, 0.1, 230)
     camera.position.set(0, 6.15, 12.5)
     camera.lookAt(0, 1.1, -8)
 
@@ -363,7 +408,7 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
       bus.rotation.set(0, 0, 0)
       setScore(0)
       setCollected(0)
-      setPace("1.0")
+      setDisplaySpeed(START_SPEED)
     }
 
     const start = () => {
@@ -389,7 +434,7 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
       const object = isClock ? createClock() : createCone()
       const randomLane = Math.floor(Math.random() * LANES.length)
       object.position.x = LANES[randomLane]
-      object.position.z = -62
+      object.position.z = -Math.max(62, speed * 2.25)
       scene.add(object)
       entities.push({ kind: isClock ? "clock" : "cone", object, spin: isClock ? object : null })
     }
@@ -429,7 +474,7 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
       const wheelMeshes = bus.userData.wheels as THREE.Mesh[]
       if (phaseValue === "playing") {
         drivingSeconds += delta
-        speed = Math.min(MAX_SPEED, START_SPEED + drivingSeconds * 0.8)
+        speed = Math.min(MAX_SPEED, START_SPEED + drivingSeconds * ACCELERATION)
         distance += speed * delta * 0.62
         spawnTimer -= delta
         if (spawnTimer <= 0) {
@@ -484,7 +529,7 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
         elapsedSinceUi += delta
         if (elapsedSinceUi > 0.1) {
           setScore(Math.floor(distance) + clocks * 50)
-          setPace((speed / START_SPEED).toFixed(1))
+          setDisplaySpeed(speed)
           elapsedSinceUi = 0
         }
       } else if (phaseValue === "ready") {
@@ -560,7 +605,6 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
         <div className="rounded-2xl border border-white/15 bg-[#10263b]/78 px-4 py-2 shadow-xl backdrop-blur-md">
           <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/55">Score</p>
           <p className="font-mono text-xl font-black tabular-nums sm:text-2xl">{score.toString().padStart(4, "0")}</p>
-          <p className="mt-0.5 font-mono text-[10px] font-semibold text-emerald-300">PACE {pace}x</p>
         </div>
         <div className="flex gap-2">
           <div className="rounded-2xl border border-white/15 bg-[#10263b]/78 px-3 py-2 text-center shadow-xl backdrop-blur-md">
@@ -572,6 +616,10 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
             <p className="mt-0.5 font-mono text-sm font-black">{best}</p>
           </div>
         </div>
+      </div>
+
+      <div className="pointer-events-none absolute left-1/2 top-[9.5rem] z-10 -translate-x-1/2 sm:top-24">
+        <Speedometer speed={displaySpeed} />
       </div>
 
       {phase !== "playing" && (
