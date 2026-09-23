@@ -409,37 +409,31 @@ function DestinationMarkers({
 function fitMapToRoute(
   map: L.Map,
   selectedDestination: string,
-  busLat: number,
-  busLng: number,
-  user: UserPos | null,
+  bus: Point | null,
   animate: boolean,
 ): boolean {
   const routeStops = getDestinationStops(selectedDestination)
   if (routeStops.length === 0) return false
 
   const bounds = L.latLngBounds(routeStops.map((destination) => [destination.lat, destination.lng]))
-  bounds.extend([busLat, busLng])
-  if (user) bounds.extend([user.lat, user.lng])
+  if (bus) bounds.extend([bus.lat, bus.lng])
   map.fitBounds(bounds, { animate, padding: [32, 32], maxZoom: 15 })
   return true
 }
 
 function SelectedRouteView({
-  busLat,
-  busLng,
-  user,
+  bus,
   selectedDestination,
   onFitStops,
 }: {
-  busLat: number
-  busLng: number
-  user: UserPos | null
+  bus: Point | null
   selectedDestination: string
   onFitStops: () => void
 }) {
   const map = useMap()
-  const latest = useRef({ busLat, busLng, user, onFitStops })
-  latest.current = { busLat, busLng, user, onFitStops }
+  const hasBus = Boolean(bus)
+  const latest = useRef({ bus, onFitStops })
+  latest.current = { bus, onFitStops }
 
   useEffect(() => {
     const current = latest.current
@@ -447,22 +441,19 @@ function SelectedRouteView({
       fitMapToRoute(
         map,
         selectedDestination,
-        current.busLat,
-        current.busLng,
-        current.user,
+        current.bus,
         false,
       )
     ) {
       current.onFitStops()
     }
-  }, [map, selectedDestination])
+  }, [map, selectedDestination, hasBus])
 
   return null
 }
 
 function MapOverlayButtons({
-  busLat,
-  busLng,
+  bus,
   user,
   followBus,
   onFollowBus,
@@ -470,8 +461,7 @@ function MapOverlayButtons({
   onFitStops,
   selectedDestination,
 }: {
-  busLat: number
-  busLng: number
+  bus: Point | null
   user: UserPos | null
   followBus: boolean
   onFollowBus: () => void
@@ -483,15 +473,15 @@ function MapOverlayButtons({
   const el = map.getContainer()
 
   const fit = useCallback(() => {
-    if (!user) return
-    const b = L.latLngBounds(L.latLng(busLat, busLng), L.latLng(user.lat, user.lng))
+    if (!bus || !user) return
+    const b = L.latLngBounds(L.latLng(bus.lat, bus.lng), L.latLng(user.lat, user.lng))
     map.fitBounds(b.pad(0.14), { animate: true })
     onFitBoth()
-  }, [map, busLat, busLng, user, onFitBoth])
+  }, [map, bus, user, onFitBoth])
 
   const fitStops = useCallback(() => {
-    if (fitMapToRoute(map, selectedDestination, busLat, busLng, user, true)) onFitStops()
-  }, [map, busLat, busLng, user, selectedDestination, onFitStops])
+    if (fitMapToRoute(map, selectedDestination, bus, true)) onFitStops()
+  }, [map, bus, selectedDestination, onFitStops])
 
   return createPortal(
     <div className="pointer-events-none absolute bottom-2 right-2 z-[1000] flex w-max max-w-[calc(100%-1rem)] flex-wrap justify-end gap-2">
@@ -502,7 +492,7 @@ function MapOverlayButtons({
       >
         Route stops
       </button>
-      {followBus && user ? (
+      {bus && followBus && user ? (
         <button
           type="button"
           onClick={fit}
@@ -510,7 +500,7 @@ function MapOverlayButtons({
         >
           Fit bus &amp; me
         </button>
-      ) : !followBus ? (
+      ) : bus && !followBus ? (
         <button
           type="button"
           onClick={onFollowBus}
@@ -534,6 +524,10 @@ type Props = {
 
 export default function LiveBusMap({ vehicles, trackKey, selectedDestination }: Props) {
   const v = vehicles.length === 1 ? vehicles[0] : null
+  const selectedStops = getDestinationStops(selectedDestination)
+  const initialCenter = v
+    ? ([v.lat, v.lng] as [number, number])
+    : ([selectedStops[0]?.lat ?? 2.945, selectedStops[0]?.lng ?? 101.873] as [number, number])
   const off = v ? isEngineOff(v.status) : false
   const icon = useMemo(() => (v ? createBusIcon(v.carNumber, off) : null), [v?.carNumber, off])
   const destinationIcons = useMemo(
@@ -544,7 +538,7 @@ export default function LiveBusMap({ vehicles, trackKey, selectedDestination }: 
 
   const [userPos, setUserPos] = useState<UserPos | null>(null)
   const [geoError, setGeoError] = useState<string | null>(null)
-  const [followBus, setFollowBus] = useState(true)
+  const [followBus, setFollowBus] = useState(false)
 
   const onPosition = useCallback((p: UserPos | null) => {
     setUserPos(p)
@@ -554,24 +548,16 @@ export default function LiveBusMap({ vehicles, trackKey, selectedDestination }: 
   }, [])
 
   useEffect(() => {
-    setFollowBus(true)
+    setFollowBus(false)
   }, [trackKey])
-
-  if (!v || !icon) {
-    return (
-      <p className="rounded-lg border border-dashed border-border/80 bg-muted/30 px-3 py-8 text-center text-xs text-muted-foreground">
-        No GPS fix for this bus right now. It may be offline or not reporting.
-      </p>
-    )
-  }
 
   return (
     <div className="space-y-2">
       <div className="relative z-0 h-[min(360px,58vh)] w-full overflow-hidden rounded-xl border border-border/60 shadow-sm">
         <MapContainer
           key={trackKey}
-          center={[v.lat, v.lng]}
-          zoom={16}
+          center={initialCenter}
+          zoom={v ? 16 : 15}
           zoomControl={false}
           className="h-full w-full [&_.leaflet-control-attribution]:text-[10px]"
           scrollWheelZoom
@@ -587,27 +573,26 @@ export default function LiveBusMap({ vehicles, trackKey, selectedDestination }: 
             {...(basemap.subdomains ? { subdomains: basemap.subdomains } : {})}
             maxZoom={20}
           />
-          <UserLocationOnMap onPosition={onPosition} onError={onGeoError} />
+          {v && <UserLocationOnMap onPosition={onPosition} onError={onGeoError} />}
           {userPos && <UserLocationShapes user={userPos} />}
           <DestinationMarkers icons={destinationIcons} selectedDestination={selectedDestination} />
+          {v && icon && (
+            <SlidingMarker
+              lat={v.lat}
+              lng={v.lng}
+              speed={v.speed}
+              heading={v.heading}
+              icon={icon}
+              panMap={followBus}
+            />
+          )}
           <SelectedRouteView
-            busLat={v.lat}
-            busLng={v.lng}
-            user={userPos}
+            bus={v}
             selectedDestination={selectedDestination}
             onFitStops={() => setFollowBus(false)}
           />
-          <SlidingMarker
-            lat={v.lat}
-            lng={v.lng}
-            speed={v.speed}
-            heading={v.heading}
-            icon={icon}
-            panMap={followBus}
-          />
           <MapOverlayButtons
-            busLat={v.lat}
-            busLng={v.lng}
+            bus={v}
             user={userPos}
             followBus={followBus}
             onFollowBus={() => setFollowBus(true)}
@@ -618,6 +603,7 @@ export default function LiveBusMap({ vehicles, trackKey, selectedDestination }: 
         </MapContainer>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+        {!v && <span>Showing stops for the selected destination. Live bus position is unavailable.</span>}
         {userPos && (
           <span>
             <span className="font-medium text-foreground">You</span>: blue dot · ~{Math.round(userPos.accuracyLabelM)} m
@@ -625,7 +611,7 @@ export default function LiveBusMap({ vehicles, trackKey, selectedDestination }: 
           </span>
         )}
         {geoError && <span className="text-amber-700 dark:text-amber-400">{geoError}</span>}
-        {!userPos && !geoError && (
+        {v && !userPos && !geoError && (
           <span>Requesting your location (high accuracy)… allow if prompted.</span>
         )}
       </div>

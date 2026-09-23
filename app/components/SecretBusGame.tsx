@@ -20,6 +20,8 @@ type Entity = {
 
 const LANES = [-2.55, 0, 2.55] as const
 const BUS_Z = 3
+const START_SPEED = 13
+const MAX_SPEED = 30
 
 function makeTextTexture(
   lines: string[],
@@ -209,6 +211,7 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
   const [score, setScore] = useState(0)
   const [best, setBest] = useState(0)
   const [collected, setCollected] = useState(0)
+  const [pace, setPace] = useState("1.0")
 
   closeRef.current = onClose
 
@@ -312,7 +315,8 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
     let targetX = LANES[laneIndex]
     let distance = 0
     let clocks = 0
-    let speed = 13
+    let speed = START_SPEED
+    let drivingSeconds = 0
     let spawnTimer = 0.7
     let phaseValue: Phase = "ready"
     let elapsedSinceUi = 0
@@ -351,13 +355,15 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
       targetX = LANES[laneIndex]
       distance = 0
       clocks = 0
-      speed = 13
+      speed = START_SPEED
+      drivingSeconds = 0
       spawnTimer = 0.65
       bus.position.x = 0
       bus.position.y = 0
       bus.rotation.set(0, 0, 0)
       setScore(0)
       setCollected(0)
+      setPace("1.0")
     }
 
     const start = () => {
@@ -422,7 +428,8 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
 
       const wheelMeshes = bus.userData.wheels as THREE.Mesh[]
       if (phaseValue === "playing") {
-        speed = Math.min(25, 13 + distance / 260)
+        drivingSeconds += delta
+        speed = Math.min(MAX_SPEED, START_SPEED + drivingSeconds * 0.8)
         distance += speed * delta * 0.62
         spawnTimer -= delta
         if (spawnTimer <= 0) {
@@ -477,6 +484,7 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
         elapsedSinceUi += delta
         if (elapsedSinceUi > 0.1) {
           setScore(Math.floor(distance) + clocks * 50)
+          setPace((speed / START_SPEED).toFixed(1))
           elapsedSinceUi = 0
         }
       } else if (phaseValue === "ready") {
@@ -535,11 +543,7 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
 
       <header className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-4 sm:p-6">
         <div className="min-w-0">
-          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.28em] text-emerald-300 sm:text-xs">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-            Secret route unlocked
-          </div>
-          <h2 className="mt-1 text-xl font-black tracking-tight drop-shadow-md sm:text-3xl">NottGo: Campus Run</h2>
+          <h2 className="text-xl font-black tracking-tight drop-shadow-md sm:text-3xl">NottGo: Campus Run</h2>
         </div>
         <button
           type="button"
@@ -554,8 +558,9 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
 
       <div className="pointer-events-none absolute left-4 right-4 top-[5.4rem] flex justify-between gap-2 sm:left-6 sm:right-6 sm:top-24">
         <div className="rounded-2xl border border-white/15 bg-[#10263b]/78 px-4 py-2 shadow-xl backdrop-blur-md">
-          <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/55">Route score</p>
+          <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/55">Score</p>
           <p className="font-mono text-xl font-black tabular-nums sm:text-2xl">{score.toString().padStart(4, "0")}</p>
+          <p className="mt-0.5 font-mono text-[10px] font-semibold text-emerald-300">PACE {pace}x</p>
         </div>
         <div className="flex gap-2">
           <div className="rounded-2xl border border-white/15 bg-[#10263b]/78 px-3 py-2 text-center shadow-xl backdrop-blur-md">
@@ -570,29 +575,27 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
       </div>
 
       {phase !== "playing" && (
-        <div className="absolute inset-0 grid place-items-center bg-[#08131f]/30 px-5 backdrop-blur-[2px]">
-          <div className="w-full max-w-sm rounded-[2rem] border border-white/20 bg-[#10263b]/90 p-6 text-center shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-8">
-            <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-emerald-400 text-[#10263b] shadow-lg shadow-emerald-950/30">
-              {phase === "game-over" ? <RotateCcw className="h-8 w-8" /> : phase === "paused" ? <Pause className="h-8 w-8" /> : <Play className="ml-1 h-8 w-8" />}
-            </div>
-            <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.25em] text-emerald-300">
-              {phase === "game-over" ? "Route interrupted" : phase === "paused" ? "Service paused" : "University of Nottingham Malaysia"}
-            </p>
-            <h3 className="mt-2 text-2xl font-black">
-              {phase === "game-over" ? `Score ${score}` : phase === "paused" ? "Ready to continue?" : "Catch the clocks. Dodge the cones."}
+        <div className="absolute inset-0 grid place-items-center bg-[#08131f]/55 px-5">
+          <div className="w-full max-w-sm text-center drop-shadow-lg">
+            <h3 className="text-3xl font-black tracking-tight sm:text-4xl">
+              {phase === "game-over" ? `Score ${score}` : phase === "paused" ? "Paused" : "Ready to drive?"}
             </h3>
-            <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-white/70">
-              Steer the Nottingham shuttle across three lanes. Every clock is worth 50 points—and the route gets faster as you go.
+            <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-white/90">
+              {phase === "ready"
+                ? "Change lanes to collect clocks for 50 points. Avoid the cones."
+                : phase === "paused"
+                  ? "Your route is waiting."
+                  : "Watch for the cones on your next run."}
             </p>
             <button
               type="button"
               onClick={start}
-              className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-400 px-5 py-3 text-sm font-black text-[#10263b] shadow-lg shadow-emerald-950/30 transition hover:-translate-y-0.5 hover:bg-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="mt-6 inline-flex min-h-12 min-w-44 items-center justify-center gap-2 rounded-full bg-emerald-400 px-6 py-3 text-sm font-black text-[#10263b] shadow-lg transition hover:bg-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               {phase === "game-over" ? <RotateCcw className="h-5 w-5" /> : <Play className="h-5 w-5" />}
               {phase === "game-over" ? "Drive again" : phase === "paused" ? "Resume route" : "Start route"}
             </button>
-            <p className="mt-4 text-[11px] font-medium text-white/45">Keyboard: ← → or A D · P to pause · Esc to exit</p>
+            <p className="mt-4 text-[11px] font-medium text-white/70">← → or A / D to steer. P to pause.</p>
           </div>
         </div>
       )}

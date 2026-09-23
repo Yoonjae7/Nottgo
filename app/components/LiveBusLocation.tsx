@@ -232,63 +232,7 @@ export default function LiveBusLocation({ selectedDestination }: { selectedDesti
             ))}
           </div>
 
-          {/* Animated map skeleton */}
-          <div className="relative flex h-[200px] items-center justify-center overflow-hidden rounded-xl bg-muted/30">
-            {/* Shimmer sweep */}
-            <div
-              className="absolute inset-0 -translate-x-full animate-[shimmer_2s_ease-in-out_infinite]"
-              style={{
-                background:
-                  "linear-gradient(90deg, transparent 0%, hsl(var(--primary) / 0.04) 40%, hsl(var(--primary) / 0.08) 50%, hsl(var(--primary) / 0.04) 60%, transparent 100%)",
-              }}
-            />
-
-            {/* Faux map grid lines */}
-            <div className="absolute inset-0 opacity-[0.04]">
-              {[25, 50, 75].map((p) => (
-                <div key={`h${p}`} className="absolute left-0 right-0 border-t border-foreground" style={{ top: `${p}%` }} />
-              ))}
-              {[25, 50, 75].map((p) => (
-                <div key={`v${p}`} className="absolute top-0 bottom-0 border-l border-foreground" style={{ left: `${p}%` }} />
-              ))}
-            </div>
-
-            {/* Animated bus icon + pulsing GPS ring */}
-            <div className="relative flex flex-col items-center gap-3">
-              <div className="relative">
-                <div className="absolute -inset-3 animate-ping rounded-full bg-primary/10" style={{ animationDuration: "2s" }} />
-                <div className="absolute -inset-1.5 animate-pulse rounded-full bg-primary/15" />
-                <div className="relative rounded-full bg-primary/10 p-3">
-                  <svg
-                    viewBox="0 0 48 52"
-                    width="32"
-                    height="36"
-                    className="animate-[busFloat_3s_ease-in-out_infinite] text-primary"
-                    aria-hidden="true"
-                  >
-                    <rect x="5" y="8" width="38" height="32" rx="5" fill="currentColor" opacity="0.85" />
-                    <rect x="8" y="11" width="32" height="15" rx="2" fill="white" opacity="0.9" />
-                    <rect x="8" y="28" width="32" height="9" rx="1.5" fill="currentColor" opacity="0.65" />
-                    <circle cx="17" cy="36" r="2.8" fill="white" opacity="0.5" />
-                    <circle cx="31" cy="36" r="2.8" fill="white" opacity="0.5" />
-                  </svg>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-medium text-muted-foreground">Connecting to GPS</span>
-                <span className="flex gap-0.5">
-                  {[0, 1, 2].map((i) => (
-                    <span
-                      key={i}
-                      className="inline-block h-1 w-1 rounded-full bg-primary/50 animate-[dotBounce_1.4s_ease-in-out_infinite]"
-                      style={{ animationDelay: `${i * 0.2}s` }}
-                    />
-                  ))}
-                </span>
-              </div>
-            </div>
-          </div>
+          <LiveBusMap vehicles={[]} trackKey="route-stops" selectedDestination={selectedDestination} />
 
           <p className="text-center text-[10px] text-muted-foreground/60">
             First load may take 10–30 s while the GPS server responds
@@ -311,6 +255,7 @@ export default function LiveBusLocation({ selectedDestination }: { selectedDesti
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <p>{msg}</p>
           <p className="text-xs">Still trying in the background — or refresh the page.</p>
+          <LiveBusMap vehicles={[]} trackKey="route-stops" selectedDestination={selectedDestination} />
         </CardContent>
       </Card>
     )
@@ -383,13 +328,11 @@ export default function LiveBusLocation({ selectedDestination }: { selectedDesti
           })}
         </div>
 
-        {selectedPlate && (
-          <LiveBusMap
-            vehicles={mapSlice}
-            trackKey={selectedPlate}
-            selectedDestination={selectedDestination}
-          />
-        )}
+        <LiveBusMap
+          vehicles={mapSlice}
+          trackKey={selectedPlate ?? "route-stops"}
+          selectedDestination={selectedDestination}
+        />
 
         {selectedPlate && caption && (
           <p className="text-center text-[11px] text-muted-foreground">{caption}</p>
