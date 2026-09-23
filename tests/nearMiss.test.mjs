@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { lateDodgeTimeToCone } from "../lib/nearMiss.ts"
+import { isTightNearMiss, lateDodgeTimeToCone } from "../lib/nearMiss.ts"
 
 const threat = {
   coneX: 0,
@@ -30,4 +30,24 @@ test("a second steer while already leaving the cone's lane does not qualify", ()
 
 test("steering inside the cone's collision window is too late", () => {
   assert.equal(lateDodgeTimeToCone({ ...threat, coneZ: 2 }), null)
+})
+
+test("a close, safe pass after a late dodge earns a near miss", () => {
+  assert.equal(isTightNearMiss(1, 1.3, 1.5), true)
+})
+
+test("a comfortable lane-width clearance earns no near miss", () => {
+  assert.equal(isTightNearMiss(1, 1.3, 2.55), false)
+})
+
+test("an ordinary pass without a marked dodge earns no near miss", () => {
+  assert.equal(isTightNearMiss(null, 1.3, 1.5), false)
+})
+
+test("a late dodge still needs to clear the collision distance", () => {
+  assert.equal(isTightNearMiss(1, 1.3, 1.07), false)
+})
+
+test("the close-pass reward expires after the dodge window", () => {
+  assert.equal(isTightNearMiss(1, 1.71, 1.5), false)
 })

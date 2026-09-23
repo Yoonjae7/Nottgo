@@ -1,4 +1,5 @@
-export const NEAR_MISS_DODGE_WINDOW_SECONDS = 0.65
+export const NEAR_MISS_DODGE_WINDOW_SECONDS = 0.45
+export const NEAR_MISS_MAX_CLEARANCE = 1.85
 
 type DodgeCheck = {
   coneX: number
@@ -31,4 +32,17 @@ export function lateDodgeTimeToCone({
   return timeToCone > 0 && timeToCone <= NEAR_MISS_DODGE_WINDOW_SECONDS
     ? timeToCone
     : null
+}
+
+export function isTightNearMiss(
+  dodgeAt: number | null,
+  now: number,
+  closestPassGap: number | null,
+): boolean {
+  return dodgeAt !== null &&
+    closestPassGap !== null &&
+    now >= dodgeAt &&
+    now - dodgeAt <= NEAR_MISS_DODGE_WINDOW_SECONDS + 0.25 &&
+    closestPassGap >= 1.08 &&
+    closestPassGap <= NEAR_MISS_MAX_CLEARANCE
 }

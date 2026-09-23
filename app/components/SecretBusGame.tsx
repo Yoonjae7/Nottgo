@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ChevronLeft, ChevronRight, Clock3, Pause, Play, RotateCcw, Trophy, X } from "lucide-react"
 import * as THREE from "three"
-import { lateDodgeTimeToCone, NEAR_MISS_DODGE_WINDOW_SECONDS } from "@/lib/nearMiss"
+import { isTightNearMiss, lateDodgeTimeToCone, NEAR_MISS_DODGE_WINDOW_SECONDS } from "@/lib/nearMiss"
 
 type Phase = "ready" | "playing" | "paused" | "game-over"
 
@@ -18,6 +18,7 @@ type Entity = {
   object: THREE.Group
   spin: THREE.Object3D | null
   lastSecondDodgeAt: number | null
+  closestPassGap: number | null
 }
 
 const LANES = [-2.55, 0, 2.55] as const
@@ -469,6 +470,7 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
         object,
         spin: isClock ? object : null,
         lastSecondDodgeAt: null,
+        closestPassGap: null,
       })
     }
 
@@ -542,6 +544,9 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
 
           const crossedBus = previousZ <= BUS_Z + 1.55 && entity.object.position.z >= BUS_Z - 1.55
           const lateralDistance = Math.abs(entity.object.position.x - bus.position.x)
+          if (crossedBus && entity.kind === "cone") {
+            entity.closestPassGap = Math.min(entity.closestPassGap ?? Infinity, lateralDistance)
+          }
           if (crossedBus && lateralDistance < 1.08) {
             entities.splice(index, 1)
             if (entity.kind === "clock") {
@@ -559,12 +564,10 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
             }
           } else if (
             entity.kind === "cone" &&
-            entity.lastSecondDodgeAt !== null &&
-            drivingSeconds - entity.lastSecondDodgeAt <= NEAR_MISS_DODGE_WINDOW_SECONDS + 0.2 &&
+            isTightNearMiss(entity.lastSecondDodgeAt, drivingSeconds, entity.closestPassGap) &&
             previousZ <= BUS_Z + 1.55 &&
             entity.object.position.z > BUS_Z + 1.55 &&
-            lateralDistance >= 1.08 &&
-            lateralDistance <= 3.1
+            lateralDistance >= 1.08
           ) {
             entities.splice(index, 1)
             removeEntity(entity)
