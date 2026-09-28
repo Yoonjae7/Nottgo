@@ -27,12 +27,12 @@ const START_SPEED_KMH = 20
 const MAX_SPEED_KMH = 100
 const ACCELERATION_KMH = 0.9
 const START_WORLD_SPEED = 13
-const MAX_WORLD_SPEED = 78
+const MAX_WORLD_SPEED = 130
 const NEAR_MISS_POINTS = 25
 
 function worldSpeedFor(speedKmh: number): number {
   const progress = (speedKmh - START_SPEED_KMH) / (MAX_SPEED_KMH - START_SPEED_KMH)
-  return START_WORLD_SPEED + (MAX_WORLD_SPEED - START_WORLD_SPEED) * Math.pow(Math.max(0, progress), 1.1)
+  return START_WORLD_SPEED + (MAX_WORLD_SPEED - START_WORLD_SPEED) * Math.pow(THREE.MathUtils.clamp(progress, 0, 1), 1.55)
 }
 
 function Speedometer({ speedKmh }: { speedKmh: number }) {
@@ -334,6 +334,18 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
       }
     }
 
+    // Close roadside markers make the extra pace visible as they pass the camera.
+    const markerMaterial = new THREE.MeshBasicMaterial({ color: "#f8e7aa" })
+    for (const x of [-4.7, 4.7]) {
+      for (let index = 0; index < 28; index += 2) {
+        const marker = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 1.8), markerMaterial)
+        marker.rotation.x = -Math.PI / 2
+        marker.position.set(x, 0.038, 15 - index * 7)
+        scene.add(marker)
+        movingWorld.push(marker)
+      }
+    }
+
     for (let index = 0; index < 25; index++) {
       const z = 8 - index * 7.2
       const side = index % 2 === 0 ? -1 : 1
@@ -595,10 +607,12 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
         bus.rotation.y = Math.sin(now * 0.0012) * 0.025
       }
 
-      const speedFraction = (speedKmh - START_SPEED_KMH) / (MAX_SPEED_KMH - START_SPEED_KMH)
-      camera.fov = THREE.MathUtils.lerp(camera.fov, 54 + speedFraction * 20, Math.min(1, delta * 2.5))
+      const speedFraction = THREE.MathUtils.clamp((speedKmh - START_SPEED_KMH) / (MAX_SPEED_KMH - START_SPEED_KMH), 0, 1)
+      camera.fov = THREE.MathUtils.lerp(camera.fov, 54 + speedFraction * 28, Math.min(1, delta * 2.5))
       camera.updateProjectionMatrix()
       camera.position.x = THREE.MathUtils.lerp(camera.position.x, bus.position.x * 0.28, delta * 2.5)
+      camera.position.y = THREE.MathUtils.lerp(camera.position.y, 6.15 - speedFraction * 0.45, delta * 2.5)
+      camera.position.z = THREE.MathUtils.lerp(camera.position.z, 12.5 - speedFraction * 0.8, delta * 2.5)
       camera.lookAt(bus.position.x * 0.15, 1.0, -8)
       renderer.render(scene, camera)
     }

@@ -1,5 +1,5 @@
-export const NEAR_MISS_DODGE_WINDOW_SECONDS = 0.45
-export const NEAR_MISS_MAX_CLEARANCE = 1.85
+export const NEAR_MISS_DODGE_WINDOW_SECONDS = 0.55
+export const NEAR_MISS_MAX_CLEARANCE = 2.2
 
 type DodgeCheck = {
   coneX: number
