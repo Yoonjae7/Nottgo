@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { busSchedule, busDestinations, getBusNextDeparture, type ScheduleType } from "@/lib/data"
+import { busSchedule, busDestinations, busScheduleEffectiveDate, getBusNextDeparture, type ScheduleType } from "@/lib/data"
 import { getBusSlotVisual } from "@/lib/scheduleSlotVisual"
 import { ScheduleTimeSlot } from "./ScheduleTimeSlot"
 
@@ -34,6 +34,7 @@ export default function FullBusSchedule({ destination, onClose }: FullBusSchedul
           <TableRow>
             <TableHead className="text-xs">Direction</TableHead>
             <TableHead className="text-xs">Time</TableHead>
+            <TableHead className="text-xs">Service</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -41,40 +42,44 @@ export default function FullBusSchedule({ destination, onClose }: FullBusSchedul
             schedule[scheduleType].out.map((entry) => {
               const visual = getBusSlotVisual(entry.time, nextOut, now)
               return (
-                <TableRow key={`out-${entry.time}`}>
+                <TableRow key={`out-${entry.time}-${entry.serviceType}`}>
                   <TableCell className="text-sm py-2">Outbound</TableCell>
                   <TableCell className="p-1.5 align-top">
                     <ScheduleTimeSlot visual={visual} className="w-full min-w-0 text-sm" tabularNums>
                       {entry.time}
                     </ScheduleTimeSlot>
+                    {entry.note && <p className="mt-1 text-xs text-muted-foreground">{entry.note}</p>}
                   </TableCell>
+                  <TableCell className="text-sm">{entry.serviceType === "van" ? "Van" : "Bus"}</TableCell>
                 </TableRow>
               )
             })
           ) : (
             <TableRow>
               <TableCell className="text-sm py-2">Outbound</TableCell>
-              <TableCell className="text-sm py-2 text-gray-500">No service</TableCell>
+              <TableCell colSpan={2} className="text-sm py-2 text-gray-500">No service</TableCell>
             </TableRow>
           )}
           {schedule[scheduleType].in.length > 0 ? (
             schedule[scheduleType].in.map((entry) => {
               const visual = getBusSlotVisual(entry.time, nextIn, now)
               return (
-                <TableRow key={`in-${entry.time}`}>
+                <TableRow key={`in-${entry.time}-${entry.serviceType}`}>
                   <TableCell className="text-sm py-2">Inbound</TableCell>
                   <TableCell className="p-1.5 align-top">
                     <ScheduleTimeSlot visual={visual} className="w-full min-w-0 text-sm" tabularNums>
                       {entry.time}
                     </ScheduleTimeSlot>
+                    {entry.note && <p className="mt-1 text-xs text-muted-foreground">{entry.note}</p>}
                   </TableCell>
+                  <TableCell className="text-sm">{entry.serviceType === "van" ? "Van" : "Bus"}</TableCell>
                 </TableRow>
               )
             })
           ) : (
             <TableRow>
               <TableCell className="text-sm py-2">Inbound</TableCell>
-              <TableCell className="text-sm py-2 text-gray-500">No service</TableCell>
+              <TableCell colSpan={2} className="text-sm py-2 text-gray-500">No service</TableCell>
             </TableRow>
           )}
         </TableBody>
@@ -86,14 +91,15 @@ export default function FullBusSchedule({ destination, onClose }: FullBusSchedul
     <Card className="w-full">
       <CardHeader className="pb-2">
         <CardTitle className="text-lg">Full Bus Schedule - {destinationName}</CardTitle>
-        <CardDescription className="text-sm">View all schedule types</CardDescription>
+        <CardDescription className="text-sm">Effective {busScheduleEffectiveDate}</CardDescription>
       </CardHeader>
       <CardContent className="p-0">
         <Tabs defaultValue="weekday">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="weekday">Mon-Thu</TabsTrigger>
             <TabsTrigger value="friday">Friday</TabsTrigger>
             <TabsTrigger value="weekend">Sat-Sun</TabsTrigger>
+            <TabsTrigger value="publicHoliday">Holiday</TabsTrigger>
           </TabsList>
           <TabsContent value="weekday">
             <div className="overflow-x-auto">{renderSchedule("weekday")}</div>
@@ -103,6 +109,10 @@ export default function FullBusSchedule({ destination, onClose }: FullBusSchedul
           </TabsContent>
           <TabsContent value="weekend">
             <div className="overflow-x-auto">{renderSchedule("weekend")}</div>
+          </TabsContent>
+          <TabsContent value="publicHoliday">
+            <p className="px-4 py-2 text-sm text-muted-foreground">Public holiday schedule</p>
+            <div className="overflow-x-auto">{renderSchedule("publicHoliday")}</div>
           </TabsContent>
         </Tabs>
         {schedule.notes && (

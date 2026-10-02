@@ -99,7 +99,7 @@ export default function LiveBusLocation({ selectedDestination }: { selectedDesti
         lastGoodVehiclesRef.current.length === roster.length
       const useSinglePoll =
         snapshotOk &&
-        Boolean(selectedPlate) &&
+        !!selectedPlate &&
         roster.includes(selectedPlate)
 
       const url = useSinglePoll

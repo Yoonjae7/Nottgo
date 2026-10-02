@@ -36,6 +36,7 @@ export default function Home() {
   const [showFullSchedule, setShowFullSchedule] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
   const [scheduleType, setScheduleType] = useState<ScheduleType>("weekday")
+  const [isPublicHoliday, setIsPublicHoliday] = useState(false)
   const [isFriday, setIsFriday] = useState(false)
   const [isBuggy, setIsBuggy] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -66,10 +67,11 @@ export default function Home() {
   const buggyNextArrival = mounted ? getBuggyNextArrival(selectedStop, currentTime, isFriday) : null
   const buggyArrivalTimes = mounted ? getBuggyArrivalTimes(selectedStop, isFriday) : []
 
-  const busOutSchedule = mounted ? getBusSchedule(selectedDestination, scheduleType, "out") : []
-  const busInSchedule = mounted ? getBusSchedule(selectedDestination, scheduleType, "in") : []
-  const busNextDepartureOut = mounted ? getBusNextDeparture(selectedDestination, scheduleType, "out", currentTime) : null
-  const busNextDepartureIn = mounted ? getBusNextDeparture(selectedDestination, scheduleType, "in", currentTime) : null
+  const busScheduleType = isPublicHoliday ? "publicHoliday" : scheduleType
+  const busOutSchedule = mounted ? getBusSchedule(selectedDestination, busScheduleType, "out") : []
+  const busInSchedule = mounted ? getBusSchedule(selectedDestination, busScheduleType, "in") : []
+  const busNextDepartureOut = mounted ? getBusNextDeparture(selectedDestination, busScheduleType, "out", currentTime) : null
+  const busNextDepartureIn = mounted ? getBusNextDeparture(selectedDestination, busScheduleType, "in", currentTime) : null
 
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-start px-3 py-6 sm:px-4 sm:py-8 md:px-6">
@@ -190,6 +192,18 @@ export default function Home() {
             ) : (
               <div className="space-y-4">
                 <div>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={isPublicHoliday}
+                      onChange={(event) => setIsPublicHoliday(event.target.checked)}
+                      className="h-4 w-4 accent-primary"
+                    />
+                    Public holiday schedule
+                  </label>
+                  <p className="mt-1 text-xs text-muted-foreground">Select on public holidays; holidays are not detected automatically.</p>
+                </div>
+                <div>
                   <p className="text-sm text-gray-600 mb-2">Select your destination:</p>
                   <Select
                     onValueChange={(value) => {
@@ -259,7 +273,7 @@ export default function Home() {
                     schedule={selectedDirection === "out" ? busOutSchedule : busInSchedule}
                     nextDeparture={selectedDirection === "out" ? busNextDepartureOut : busNextDepartureIn}
                     notes={busSchedule[selectedDestination as keyof typeof busSchedule].notes}
-                    scheduleType={scheduleType}
+                    scheduleType={busScheduleType}
                     currentTime={currentTime}
                   />
                 ) : (

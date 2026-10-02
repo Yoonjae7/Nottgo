@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { busDestinations } from "@/lib/data"
+import { busDestinations, busScheduleEffectiveDate, busScheduleLabels } from "@/lib/data"
 import { Badge } from "@/components/ui/badge"
 import { format, parse } from "date-fns"
 import type { ScheduleType, ScheduleEntry } from "@/lib/data"
@@ -28,11 +28,7 @@ export default function BusScheduleDisplay({
 }: BusScheduleDisplayProps) {
   const destinationName = busDestinations.find((d) => d.id === destination)?.name || destination
 
-  const scheduleTypeLabel = {
-    weekday: "Weekday (Mon-Thu)",
-    friday: "Friday",
-    weekend: "Weekend (Sat-Sun)",
-  }[scheduleType]
+  const scheduleTypeLabel = busScheduleLabels[scheduleType]
 
   const directionLabel = direction === "out" ? "From Campus" : "To Campus"
   const routeLabel = direction === "out" 
@@ -45,7 +41,7 @@ export default function BusScheduleDisplay({
     return formatArrivalCountdown(departureAt.getTime() - currentTime.getTime())
   })()
 
-  // Only show badge for vans, not for buses or regular services
+  // Preserve the bus/van distinction from the official timetable.
   const getServiceBadge = (serviceType: string) => {
     if (serviceType === "van") {
       return (
@@ -68,6 +64,7 @@ export default function BusScheduleDisplay({
     <Card className="w-full">
       <CardHeader className="pb-2">
         <CardTitle className="text-lg">{routeLabel}</CardTitle>
+        <CardDescription>Effective {busScheduleEffectiveDate}</CardDescription>
         <div className="flex flex-col space-y-3">
           <div className="flex items-center justify-between">
             <CardDescription className="text-base font-semibold">
@@ -108,10 +105,13 @@ export default function BusScheduleDisplay({
               schedule.map((entry) => {
                 const visual = getBusSlotVisual(entry.time, nextDeparture, currentTime)
                 return (
-                  <ScheduleTimeSlot key={entry.time} visual={visual} tabularNums={false}>
-                    {entry.time}
-                    {getServiceBadge(entry.serviceType)}
-                  </ScheduleTimeSlot>
+                  <div key={`${entry.time}-${entry.serviceType}`} className="min-w-0">
+                    <ScheduleTimeSlot visual={visual} tabularNums={false}>
+                      {entry.time}
+                      {getServiceBadge(entry.serviceType)}
+                    </ScheduleTimeSlot>
+                    {entry.note && <p className="mt-1 text-[10px] leading-tight text-muted-foreground">{entry.note}</p>}
+                  </div>
                 )
               })
             ) : (

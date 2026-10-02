@@ -37,7 +37,6 @@ const DESTINATIONS: Destination[] = [
   { id: "tts", label: "TTS", name: "Taman Tasik Semenyih", lat: 2.949533, lng: 101.872852 },
   { id: "lotus", label: "LOT", name: "Lotus's Semenyih", lat: 2.92892, lng: 101.85602 },
   { id: "ecohill", label: "ECO", name: "Ecohill Walk Mall", lat: 2.92548, lng: 101.85747 },
-  { id: "al-ittihad", label: "AIT", name: "Al-Ittihad Mosque, TTS", lat: 2.94673, lng: 101.8683 },
   { id: "pga", label: "PGA", name: "PGA Semenyih Pelangi Mosque", lat: 2.95468, lng: 101.87299 },
   { id: "ioi", label: "IOI", name: "IOI City Mall, Putrajaya", lat: 2.96946, lng: 101.71421 },
 ]
@@ -47,7 +46,6 @@ const DESTINATION_ROUTE_STOPS: Record<string, string[]> = {
   KajangMRT: ["kajang"],
   TTS: ["tts"],
   LOTUS: ["lotus", "ecohill"],
-  MosqueAlItt: ["al-ittihad"],
   MosquePGA: ["pga"],
   IOICityMall: ["ioi"],
 }

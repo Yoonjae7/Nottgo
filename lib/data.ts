@@ -19,330 +19,217 @@ export const buggyStops = ["Trent Building", "Radius", "F3", "Block H", "Cafeter
 // Times that don't run on Friday due to Friday Prayer
 export const fridayExceptionTimes = ["12:30", "13:00", "13:30", "14:00"]
 
-export type ScheduleType = "weekday" | "friday" | "weekend"
+export type ScheduleType = "weekday" | "friday" | "weekend" | "publicHoliday"
 
-// Define service types for buses and vans
+export const busScheduleEffectiveDate = "1 October 2026"
+export const busScheduleLabels: Record<ScheduleType, string> = {
+  weekday: "Weekday (Mon-Thu)",
+  friday: "Friday",
+  weekend: "Weekend (Sat-Sun)",
+  publicHoliday: "Public Holiday",
+}
+
 export type ServiceType = "bus" | "van" | "regular"
 
-// Define a schedule entry with time and service type
 export interface ScheduleEntry {
   time: string
   serviceType: ServiceType
+  note?: string
+}
+
+type DirectionSchedule = { out: ScheduleEntry[]; in: ScheduleEntry[] }
+type BusRouteSchedule = Record<ScheduleType, DirectionSchedule> & {
+  notes: string | { out: string; in: string }
 }
 
 export const busDestinations = [
-  { id: "TBS", name: "TBS (Ter. Bersepadu Selatan)" },
-  { id: "KajangMRT", name: "Kajang MRT Station (Gate A)" },
+  { id: "TBS", name: "TBS (Ter. Bersepadu Selatan, Level LG)" },
+  { id: "KajangMRT", name: "Kajang KTM/MRT Station (Gate A)" },
   { id: "TTS", name: "TTS (Taman Tasik Semenyih)" },
   { id: "LOTUS", name: "LOTUS, Semenyih" },
-  { id: "MosqueAlItt", name: "Al-Itt'd Mosque, TTS (Friday Only)" },
   { id: "MosquePGA", name: "PGA Mosque, Semenyih Pelangi (Friday Only)" },
   { id: "IOICityMall", name: "IOI City Mall, Putrajaya" },
 ]
 
-// Updated bus schedule with service types
-export const busSchedule = {
+// Source: Shuttle Bus Schedule, effective 1 October 2026 (pages 1-3).
+export const busSchedule: Record<string, BusRouteSchedule> = {
   TBS: {
     weekday: {
-      out: [{ time: "18:45", serviceType: "regular" }],
-      in: [{ time: "07:45", serviceType: "regular" }],
+      out: [{ time: "18:15", serviceType: "bus" }],
+      in: [{ time: "07:45", serviceType: "van" }],
     },
     friday: {
-      out: [{ time: "18:45", serviceType: "regular" }],
-      in: [{ time: "07:45", serviceType: "regular" }],
+      out: [{ time: "18:15", serviceType: "bus" }],
+      in: [{ time: "07:45", serviceType: "van" }],
     },
-    weekend: {
-      out: [],
-      in: [],
+    weekend: { out: [], in: [] },
+    publicHoliday: { out: [], in: [] },
+    notes: {
+      out: "Route A: TBS pick-up and drop-off at Level LG. Pass and stop at MRT Sg. Jernih and Kajang KTM/MRT stations before proceeding to TBS. Monday-Friday only; no service on weekends or public holidays.",
+      in: "Route A: Direct van service from TBS (Level LG) to campus. Monday-Friday only; no service on weekends or public holidays.",
     },
-    notes: "Route #A: This service will only pass and stop at MRT Sg Jernih station. Available on weekdays (Mon-Thu) and Friday. No service on weekend or public holiday.",
   },
   KajangMRT: {
     weekday: {
       out: [
-        { time: "09:00", serviceType: "regular" },
-        { time: "11:15", serviceType: "regular" },
-        { time: "13:15", serviceType: "regular" },
-        { time: "13:45", serviceType: "regular" },
-        { time: "15:15", serviceType: "regular" },
-        { time: "15:45", serviceType: "regular" },
-        { time: "17:15", serviceType: "regular" },
-        { time: "17:45", serviceType: "regular" },
-        { time: "18:45", serviceType: "regular" },
-        { time: "19:15", serviceType: "regular" },
-        { time: "20:45", serviceType: "regular" },
-        { time: "22:30", serviceType: "regular" },
+        { time: "09:45", serviceType: "bus" },
+        { time: "11:15", serviceType: "bus" },
+        { time: "13:15", serviceType: "bus" },
+        { time: "13:45", serviceType: "bus" },
+        { time: "15:15", serviceType: "bus" },
+        { time: "16:45", serviceType: "bus" },
+        { time: "17:15", serviceType: "bus" },
+        { time: "17:45", serviceType: "bus" },
+        { time: "18:15", serviceType: "bus" },
+        { time: "22:30", serviceType: "bus" },
       ],
       in: [
-        { time: "08:00", serviceType: "regular" },
-        { time: "08:15", serviceType: "regular" },
-        { time: "08:30", serviceType: "regular" },
-        { time: "10:15", serviceType: "regular" },
-        { time: "12:15", serviceType: "regular" },
-        { time: "14:15", serviceType: "regular" },
-        { time: "14:30", serviceType: "regular" },
-        { time: "16:30", serviceType: "regular" },
-        { time: "17:00", serviceType: "regular" },
-        { time: "18:30", serviceType: "regular" },
-        { time: "19:00", serviceType: "regular" },
-        { time: "20:00", serviceType: "regular" },
-        { time: "21:30", serviceType: "regular" },
+        { time: "08:00", serviceType: "bus", note: "Stops at TTS" },
+        { time: "08:15", serviceType: "bus", note: "Stops at TTS" },
+        { time: "08:45", serviceType: "bus" },
+        { time: "13:00", serviceType: "bus" },
+        { time: "16:00", serviceType: "bus" },
+        { time: "18:30", serviceType: "bus" },
+        { time: "20:00", serviceType: "bus" },
+        { time: "21:30", serviceType: "bus" },
       ],
     },
     friday: {
       out: [
-        { time: "09:00", serviceType: "regular" },
-        { time: "11:15", serviceType: "regular" },
-        { time: "13:15", serviceType: "regular" },
-        { time: "13:45", serviceType: "regular" },
-        { time: "14:45", serviceType: "regular" },
-        { time: "15:15", serviceType: "regular" },
-        { time: "15:45", serviceType: "regular" },
-        { time: "16:15", serviceType: "regular" },
-        { time: "16:45", serviceType: "regular" },
-        { time: "17:15", serviceType: "regular" },
-        { time: "17:45", serviceType: "regular" },
-        { time: "18:45", serviceType: "regular" },
-        { time: "19:15", serviceType: "regular" },
-        { time: "20:45", serviceType: "regular" },
-        { time: "22:30", serviceType: "regular" },
+        { time: "09:45", serviceType: "bus" },
+        { time: "11:15", serviceType: "bus" },
+        { time: "13:15", serviceType: "bus" },
+        { time: "13:45", serviceType: "bus" },
+        { time: "15:15", serviceType: "bus" },
+        { time: "16:45", serviceType: "bus" },
+        { time: "17:15", serviceType: "bus" },
+        { time: "17:45", serviceType: "bus" },
+        { time: "18:15", serviceType: "bus" },
+        { time: "22:30", serviceType: "bus" },
       ],
       in: [
-        { time: "08:00", serviceType: "regular" },
-        { time: "08:15", serviceType: "regular" },
-        { time: "08:30", serviceType: "regular" },
-        { time: "10:15", serviceType: "regular" },
-        { time: "12:15", serviceType: "regular" },
-        { time: "14:15", serviceType: "regular" },
-        { time: "14:30", serviceType: "regular" },
-        { time: "16:30", serviceType: "regular" },
-        { time: "17:00", serviceType: "regular" },
-        { time: "18:30", serviceType: "regular" },
-        { time: "19:00", serviceType: "regular" },
-        { time: "20:00", serviceType: "regular" },
-        { time: "21:30", serviceType: "regular" },
+        { time: "08:00", serviceType: "bus", note: "Stops at TTS" },
+        { time: "08:15", serviceType: "bus", note: "Stops at TTS" },
+        { time: "08:45", serviceType: "bus" },
+        { time: "13:00", serviceType: "bus" },
+        { time: "16:00", serviceType: "bus" },
+        { time: "18:30", serviceType: "bus" },
+        { time: "20:00", serviceType: "bus" },
+        { time: "21:30", serviceType: "bus" },
       ],
     },
     weekend: {
       out: [
-        { time: "07:30", serviceType: "regular" },
-        { time: "09:30", serviceType: "regular" },
-        { time: "11:30", serviceType: "regular" },
-        { time: "12:30", serviceType: "regular" },
-        { time: "14:30", serviceType: "regular" },
-        { time: "15:30", serviceType: "regular" },
-        { time: "16:30", serviceType: "regular" },
-        { time: "17:30", serviceType: "regular" },
-        { time: "18:30", serviceType: "regular" },
-        { time: "20:30", serviceType: "regular" },
-        { time: "22:30", serviceType: "regular" },
-      ],
-      in: [
-        { time: "08:15", serviceType: "regular" },
-        { time: "10:30", serviceType: "regular" },
-        { time: "11:30", serviceType: "regular" },
-        { time: "12:30", serviceType: "regular" },
-        { time: "14:30", serviceType: "regular" },
-        { time: "15:15", serviceType: "regular" },
-        { time: "16:30", serviceType: "regular" },
-        { time: "17:15", serviceType: "regular" },
-        { time: "18:30", serviceType: "regular" },
-        { time: "19:30", serviceType: "regular" },
-        { time: "21:30", serviceType: "regular" },
-        { time: "23:30", serviceType: "regular" },
-      ],
-    },
-    notes: "Route #B: This service will pass and stop at MRT Sg Jernih station before proceeding to Kajang KTM station.",
-  },
-  TTS: {
-    weekday: {
-      out: [
-        { time: "09:30", serviceType: "van" },
-        { time: "10:30", serviceType: "van" },
-        { time: "11:30", serviceType: "van" },
-        { time: "12:00", serviceType: "regular" },
-        { time: "12:30", serviceType: "regular" },
-        { time: "14:30", serviceType: "regular" },
-        { time: "15:00", serviceType: "regular" },
-        { time: "16:00", serviceType: "regular" },
-        { time: "17:00", serviceType: "regular" },
-        { time: "18:00", serviceType: "bus" },
-        { time: "18:30", serviceType: "bus" },
+        { time: "08:30", serviceType: "bus" },
+        { time: "12:00", serviceType: "bus" },
+        { time: "15:00", serviceType: "bus" },
         { time: "19:00", serviceType: "bus" },
-        { time: "20:00", serviceType: "bus" },
         { time: "21:30", serviceType: "bus" },
-        { time: "22:45", serviceType: "bus" },
-        { time: "00:00", serviceType: "bus" },
       ],
       in: [
-        { time: "08:00", serviceType: "regular" },
-        { time: "08:30", serviceType: "regular" },
-        { time: "09:40", serviceType: "van" },
-        { time: "10:40", serviceType: "van" },
-        { time: "11:40", serviceType: "van" },
-        { time: "12:10", serviceType: "regular" },
-        { time: "12:40", serviceType: "regular" },
-        { time: "14:40", serviceType: "regular" },
-        { time: "15:10", serviceType: "regular" },
-        { time: "16:10", serviceType: "regular" },
-        { time: "17:10", serviceType: "regular" },
-        { time: "18:10", serviceType: "bus" },
-        { time: "18:40", serviceType: "bus" },
-        { time: "19:10", serviceType: "bus" },
-        { time: "20:10", serviceType: "bus" },
-        { time: "21:40", serviceType: "bus" },
-        { time: "22:40", serviceType: "bus" },
+        { time: "07:45", serviceType: "bus", note: "Stops at TTS" },
+        { time: "13:30", serviceType: "bus", note: "Stops at TTS" },
+        { time: "17:30", serviceType: "bus", note: "Stops at TTS" },
+        { time: "20:30", serviceType: "bus", note: "Stops at TTS" },
+        { time: "22:30", serviceType: "bus", note: "Stops at TTS" },
       ],
     },
-    friday: {
+    publicHoliday: {
       out: [
-        { time: "09:30", serviceType: "van" },
-        { time: "10:30", serviceType: "van" },
-        { time: "11:30", serviceType: "van" },
-        { time: "12:00", serviceType: "regular" },
-        { time: "14:30", serviceType: "regular" },
-        { time: "15:00", serviceType: "regular" },
-        { time: "16:00", serviceType: "regular" },
-        { time: "17:00", serviceType: "regular" },
-        { time: "18:00", serviceType: "bus" },
-        { time: "18:30", serviceType: "bus" },
+        { time: "08:30", serviceType: "bus" },
+        { time: "12:00", serviceType: "bus" },
+        { time: "15:00", serviceType: "bus" },
         { time: "19:00", serviceType: "bus" },
-        { time: "20:00", serviceType: "bus" },
         { time: "21:30", serviceType: "bus" },
-        { time: "22:45", serviceType: "bus" },
-        { time: "00:00", serviceType: "bus" },
       ],
       in: [
-        { time: "08:00", serviceType: "regular" },
-        { time: "08:30", serviceType: "regular" },
-        { time: "09:40", serviceType: "van" },
-        { time: "10:40", serviceType: "van" },
-        { time: "11:40", serviceType: "van" },
-        { time: "12:10", serviceType: "regular" },
-        { time: "14:40", serviceType: "regular" },
-        { time: "15:10", serviceType: "regular" },
-        { time: "16:10", serviceType: "regular" },
-        { time: "17:10", serviceType: "regular" },
-        { time: "18:10", serviceType: "bus" },
-        { time: "18:40", serviceType: "bus" },
-        { time: "19:10", serviceType: "bus" },
-        { time: "20:10", serviceType: "bus" },
-        { time: "21:40", serviceType: "bus" },
-        { time: "22:40", serviceType: "bus" },
-      ],
-    },
-    weekend: {
-      out: [
-        { time: "09:30", serviceType: "regular" },
-        { time: "10:30", serviceType: "regular" },
-        { time: "14:30", serviceType: "regular" },
-        { time: "18:15", serviceType: "regular" },
-        { time: "21:15", serviceType: "regular" },
-        { time: "21:30", serviceType: "regular" },
-        { time: "23:00", serviceType: "regular" },
-      ],
-      in: [
-        { time: "12:30", serviceType: "regular" },
-        { time: "14:30", serviceType: "regular" },
-        { time: "18:45", serviceType: "regular" },
-        { time: "21:30", serviceType: "regular" },
-        { time: "23:00", serviceType: "regular" },
+        { time: "07:45", serviceType: "bus", note: "Stops at TTS" },
+        { time: "13:30", serviceType: "bus", note: "Stops at TTS" },
+        { time: "17:30", serviceType: "bus", note: "Stops at TTS" },
+        { time: "20:30", serviceType: "bus", note: "Stops at TTS" },
+        { time: "22:30", serviceType: "bus", note: "Stops at TTS" },
       ],
     },
     notes: {
-      out: "Route #C1 & C2: Weekday and Friday services use a mix of vans (morning) and buses (afternoon/evening). From Campus: Pass and stop at Tiara East and Tetris Apartment. Pass and stop at Qualitas Clinic, Setia Mayuri.",
-      in: "Route #C1 & C2: Weekday and Friday services use a mix of vans (morning) and buses (afternoon/evening). Route #C2 provides morning one-way service from TTS to UNM campus at 8:00 and 8:30. Weekend Route #C2: One-way service from TTS to UNM (inbound: 12:30, 14:30, 18:45) and from UNM to TTS (outbound: 09:30, 10:30, 14:30, 18:15, 21:15, 23:00). Services at 21:30 and 23:00 from UNM pass TTS and continue to IOI City Mall. To Campus: Pass and stop at Tiara East and Tetris Apartment.",
+      out: "Route B: MRT Sg. Jernih Station (Exit Gate B) and Kajang KTM/MRT Station (Exit Gate A, Jalan Reko). Pass and stop at MRT Sg. Jernih before proceeding to Kajang KTM/MRT. The weekend timetable also applies on public holidays.",
+      in: "Route B: The 08:00 and 08:15 Monday-Friday departures stop at TTS before proceeding to campus. All weekend and public-holiday departures stop at TTS before proceeding to campus. Times shown are departures from Kajang, not TTS pick-up times.",
+    },
+  },
+  TTS: {
+    weekday: {
+      out: [{ time: "17:15", serviceType: "van" }],
+      in: [
+        { time: "08:30", serviceType: "bus", note: "Tiara East / Tetris Apartment" },
+        { time: "08:45", serviceType: "van", note: "Near Qualitas Clinic, Setia Mayuri" },
+        { time: "08:45", serviceType: "bus", note: "Tiara East / Tetris Apartment" },
+      ],
+    },
+    friday: {
+      out: [{ time: "17:15", serviceType: "van" }],
+      in: [
+        { time: "08:30", serviceType: "bus", note: "Tiara East / Tetris Apartment" },
+        { time: "08:45", serviceType: "van", note: "Near Qualitas Clinic, Setia Mayuri" },
+        { time: "08:45", serviceType: "bus", note: "Tiara East / Tetris Apartment" },
+      ],
+    },
+    weekend: { out: [], in: [] },
+    publicHoliday: { out: [], in: [] },
+    notes: {
+      out: "Route C: Monday-Friday van service. Pass and stop at Tiara East and Tetris Apartment. No dedicated Route C service on weekends or public holidays. Weekend IOI City Mall buses (Route F) stop at TTS on the way to IOI; no TTS pick-up times are published. Route F does not run on public holidays.",
+      in: "Route C: The 08:45 van passes the roadside near Qualitas Clinic, Setia Mayuri. The 08:30 and 08:45 buses stop at Tiara East and Tetris Apartment. No dedicated Route C service on weekends or public holidays; Kajang buses (Route B) stop at TTS en route to campus. Weekend IOI buses (Route F) also stop at TTS en route to campus, except on public holidays. Connecting services do not publish TTS pick-up times.",
     },
   },
   LOTUS: {
     weekday: {
-      out: [{ time: "18:30", serviceType: "regular" }],
-      in: [{ time: "21:00", serviceType: "regular" }],
+      out: [{ time: "18:30", serviceType: "bus" }],
+      in: [{ time: "21:00", serviceType: "bus" }],
     },
     friday: {
-      out: [{ time: "18:30", serviceType: "regular" }],
-      in: [{ time: "21:00", serviceType: "regular" }],
+      out: [{ time: "18:30", serviceType: "bus" }],
+      in: [{ time: "21:00", serviceType: "bus" }],
     },
-    weekend: {
-      out: [
-        { time: "11:30", serviceType: "regular" },
-        { time: "18:30", serviceType: "regular" },
-      ],
-      in: [
-        { time: "15:15", serviceType: "regular" },
-        { time: "16:15", serviceType: "regular" },
-      ],
-    },
+    weekend: { out: [], in: [] },
+    publicHoliday: { out: [], in: [] },
     notes: {
-      out: "Route #D: From Campus - This service will pass and stop at Ecohill Walk Mall after LOTUS Semenyih.",
-      in: "Route #D: To Campus - This service will pass and stop at Ecohill Walk Mall before proceeding to campus.",
+      out: "Route D: Monday-Friday only. Pass and stop at Ecohill Walk Mall after LOTUS Semenyih. No service on weekends or public holidays.",
+      in: "Route D: Monday-Friday only. Pass and stop at Ecohill Walk Mall before proceeding to campus. No service on weekends or public holidays.",
     },
-  },
-  MosqueAlItt: {
-    weekday: {
-      out: [],
-      in: [],
-    },
-    friday: {
-      out: [
-        { time: "12:45", serviceType: "regular" },
-        { time: "13:00", serviceType: "regular" },
-        { time: "13:15", serviceType: "regular" },
-      ],
-      in: [{ time: "14:00", serviceType: "regular" }],
-    },
-    weekend: {
-      out: [],
-      in: [],
-    },
-    notes: "Service available on Fridays only for Friday Prayer.",
   },
   MosquePGA: {
-    weekday: {
-      out: [],
-      in: [],
-    },
+    weekday: { out: [], in: [] },
     friday: {
-      out: [
-        { time: "12:45", serviceType: "regular" },
-        { time: "13:00", serviceType: "regular" },
-        { time: "13:15", serviceType: "regular" },
-      ],
-      in: [{ time: "14:00", serviceType: "regular" }],
+      out: [{ time: "12:50", serviceType: "bus", note: "3 buses depart together" }],
+      in: [{ time: "14:00", serviceType: "bus", note: "3 buses depart together" }],
     },
-    weekend: {
-      out: [],
-      in: [],
-    },
-    notes: "Service available on Fridays only for Friday Prayer.",
+    weekend: { out: [], in: [] },
+    publicHoliday: { out: [], in: [] },
+    notes: "Route E: Friday prayer service to PGA Mosque only. Three buses depart simultaneously at 12:50 from campus and at 14:00 from the mosque. No service on public holidays.",
   },
   IOICityMall: {
-    weekday: {
-      out: [],
-      in: [],
-    },
-    friday: {
-      out: [],
-      in: [],
-    },
+    weekday: { out: [], in: [] },
+    friday: { out: [], in: [] },
     weekend: {
       out: [
-        { time: "12:30", serviceType: "regular" },
-        { time: "14:30", serviceType: "regular" },
-        { time: "18:45", serviceType: "regular" },
+        { time: "12:30", serviceType: "bus" },
+        { time: "14:30", serviceType: "bus" },
+        { time: "18:45", serviceType: "bus" },
       ],
       in: [
-        { time: "17:30", serviceType: "regular" },
-        { time: "20:30", serviceType: "regular" },
-        { time: "22:15", serviceType: "regular" },
+        { time: "17:30", serviceType: "bus" },
+        { time: "20:30", serviceType: "bus" },
+        { time: "22:15", serviceType: "bus" },
       ],
     },
-    notes:
-      "Route #G: Service available on weekends only (not available on public holidays). This service goes directly from UNM to IOI City Mall and back.",
+    publicHoliday: { out: [], in: [] },
+    notes: {
+      out: "Route F: Weekends only; not available on public holidays. Pass and stop at TTS before proceeding to IOI City Mall.",
+      in: "Route F: Weekends only; not available on public holidays. Pass and stop at TTS before proceeding to campus.",
+    },
   },
 }
 
-export function getScheduleType(date: Date): ScheduleType {
+export function getScheduleType(date: Date, isPublicHoliday = false): ScheduleType {
+  if (isPublicHoliday) return "publicHoliday"
   const day = date.getDay()
   if (day === 0 || day === 6) return "weekend" // Sunday (0) or Saturday (6)
   if (day === 5) return "friday" // Friday (5)
