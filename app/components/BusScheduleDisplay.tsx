@@ -41,19 +41,12 @@ export default function BusScheduleDisplay({
     return formatArrivalCountdown(departureAt.getTime() - currentTime.getTime())
   })()
 
-  // Preserve the bus/van distinction from the official timetable.
+  // Only mark van services; bus services do not need a badge.
   const getServiceBadge = (serviceType: string) => {
     if (serviceType === "van") {
       return (
         <Badge variant="secondary" className="absolute -top-2 -right-2 text-[10px]">
           Van
-        </Badge>
-      )
-    }
-    if (serviceType === "bus") {
-      return (
-        <Badge variant="secondary" className="absolute -top-2 -right-2 text-[10px]">
-          Bus
         </Badge>
       )
     }
