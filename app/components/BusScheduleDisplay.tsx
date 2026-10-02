@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { busDestinations, busScheduleEffectiveDate, busScheduleLabels } from "@/lib/data"
+import { busDestinations, busScheduleLabels } from "@/lib/data"
 import { Badge } from "@/components/ui/badge"
 import { format, parse } from "date-fns"
 import type { ScheduleType, ScheduleEntry } from "@/lib/data"
@@ -57,7 +57,6 @@ export default function BusScheduleDisplay({
     <Card className="w-full">
       <CardHeader className="pb-2">
         <CardTitle className="text-lg">{routeLabel}</CardTitle>
-        <CardDescription>Effective {busScheduleEffectiveDate}</CardDescription>
         <div className="flex flex-col space-y-3">
           <div className="flex items-center justify-between">
             <CardDescription className="text-base font-semibold">

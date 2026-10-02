@@ -21,7 +21,6 @@ export const fridayExceptionTimes = ["12:30", "13:00", "13:30", "14:00"]
 
 export type ScheduleType = "weekday" | "friday" | "weekend" | "publicHoliday"
 
-export const busScheduleEffectiveDate = "1 October 2026"
 export const busScheduleLabels: Record<ScheduleType, string> = {
   weekday: "Weekday (Mon-Thu)",
   friday: "Friday",

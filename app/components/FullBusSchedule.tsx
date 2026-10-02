@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { busSchedule, busDestinations, busScheduleEffectiveDate, getBusNextDeparture, type ScheduleType } from "@/lib/data"
+import { busSchedule, busDestinations, getBusNextDeparture, type ScheduleType } from "@/lib/data"
 import { getBusSlotVisual } from "@/lib/scheduleSlotVisual"
 import { ScheduleTimeSlot } from "./ScheduleTimeSlot"
 
@@ -91,7 +91,6 @@ export default function FullBusSchedule({ destination, onClose }: FullBusSchedul
     <Card className="w-full">
       <CardHeader className="pb-2">
         <CardTitle className="text-lg">Full Bus Schedule - {destinationName}</CardTitle>
-        <CardDescription className="text-sm">Effective {busScheduleEffectiveDate}</CardDescription>
       </CardHeader>
       <CardContent className="p-0">
         <Tabs defaultValue="weekday">
