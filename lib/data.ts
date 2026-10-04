@@ -34,6 +34,7 @@ export interface ScheduleEntry {
   time: string
   serviceType: ServiceType
   note?: string
+  saturdayOnly?: boolean
 }
 
 type DirectionSchedule = { out: ScheduleEntry[]; in: ScheduleEntry[] }
@@ -50,15 +51,15 @@ export const busDestinations = [
   { id: "IOICityMall", name: "IOI City Mall, Putrajaya" },
 ]
 
-// Source: Shuttle Bus Schedule, effective 1 October 2026 (pages 1-3).
+// Times: UNM Shuttle Bus Schedule, effective 5 October 2026 (pages 1-3).
 export const busSchedule: Record<string, BusRouteSchedule> = {
   TBS: {
     weekday: {
-      out: [{ time: "18:15", serviceType: "bus" }],
+      out: [{ time: "18:45", serviceType: "bus" }],
       in: [{ time: "07:45", serviceType: "van" }],
     },
     friday: {
-      out: [{ time: "18:15", serviceType: "bus" }],
+      out: [{ time: "18:45", serviceType: "bus" }],
       in: [{ time: "07:45", serviceType: "van" }],
     },
     weekend: { out: [], in: [] },
@@ -79,17 +80,19 @@ export const busSchedule: Record<string, BusRouteSchedule> = {
         { time: "16:45", serviceType: "bus" },
         { time: "17:15", serviceType: "bus" },
         { time: "17:45", serviceType: "bus" },
-        { time: "18:15", serviceType: "bus" },
+        { time: "18:45", serviceType: "bus" },
+        { time: "20:45", serviceType: "bus" },
         { time: "22:30", serviceType: "bus" },
       ],
       in: [
-        { time: "08:00", serviceType: "bus", note: "Stops at TTS" },
-        { time: "08:15", serviceType: "bus", note: "Stops at TTS" },
+        { time: "08:00", serviceType: "bus" },
+        { time: "08:15", serviceType: "bus" },
         { time: "08:45", serviceType: "bus" },
-        { time: "13:00", serviceType: "bus" },
-        { time: "16:00", serviceType: "bus" },
-        { time: "18:30", serviceType: "bus" },
-        { time: "20:00", serviceType: "bus" },
+        { time: "10:15", serviceType: "bus" },
+        { time: "12:00", serviceType: "bus", note: "Stops at TTS" },
+        { time: "15:00", serviceType: "bus" },
+        { time: "18:30", serviceType: "bus", note: "Stops at TTS" },
+        { time: "20:00", serviceType: "bus", note: "Stops at TTS" },
         { time: "21:30", serviceType: "bus" },
       ],
     },
@@ -103,17 +106,19 @@ export const busSchedule: Record<string, BusRouteSchedule> = {
         { time: "16:45", serviceType: "bus" },
         { time: "17:15", serviceType: "bus" },
         { time: "17:45", serviceType: "bus" },
-        { time: "18:15", serviceType: "bus" },
+        { time: "18:45", serviceType: "bus" },
+        { time: "20:45", serviceType: "bus" },
         { time: "22:30", serviceType: "bus" },
       ],
       in: [
-        { time: "08:00", serviceType: "bus", note: "Stops at TTS" },
-        { time: "08:15", serviceType: "bus", note: "Stops at TTS" },
+        { time: "08:00", serviceType: "bus" },
+        { time: "08:15", serviceType: "bus" },
         { time: "08:45", serviceType: "bus" },
-        { time: "13:00", serviceType: "bus" },
-        { time: "16:00", serviceType: "bus" },
-        { time: "18:30", serviceType: "bus" },
-        { time: "20:00", serviceType: "bus" },
+        { time: "10:15", serviceType: "bus" },
+        { time: "12:00", serviceType: "bus", note: "Stops at TTS" },
+        { time: "15:00", serviceType: "bus" },
+        { time: "18:30", serviceType: "bus", note: "Stops at TTS" },
+        { time: "20:00", serviceType: "bus", note: "Stops at TTS" },
         { time: "21:30", serviceType: "bus" },
       ],
     },
@@ -151,47 +156,60 @@ export const busSchedule: Record<string, BusRouteSchedule> = {
     },
     notes: {
       out: "Route B: MRT Sg. Jernih Station (Exit Gate B) and Kajang KTM/MRT Station (Exit Gate A, Jalan Reko). Pass and stop at MRT Sg. Jernih before proceeding to Kajang KTM/MRT. The weekend timetable also applies on public holidays.",
-      in: "Route B: The 08:00 and 08:15 Monday-Friday departures stop at TTS before proceeding to campus. All weekend and public-holiday departures stop at TTS before proceeding to campus. Times shown are departures from Kajang, not TTS pick-up times.",
+      in: "Route B: The 12:00, 18:30 and 20:00 Monday-Friday departures stop at TTS before proceeding to campus. All weekend and public-holiday departures stop at TTS before proceeding to campus. Times shown are departures from Kajang, not TTS pick-up times.",
     },
   },
   TTS: {
     weekday: {
-      out: [{ time: "17:15", serviceType: "van" }],
+      out: [
+        { time: "17:15", serviceType: "van" },
+        { time: "18:30", serviceType: "bus" },
+      ],
       in: [
-        { time: "08:30", serviceType: "bus", note: "Tiara East / Tetris Apartment" },
         { time: "08:45", serviceType: "van", note: "Near Qualitas Clinic, Setia Mayuri" },
-        { time: "08:45", serviceType: "bus", note: "Tiara East / Tetris Apartment" },
+        { time: "09:30", serviceType: "van", note: "Near Qualitas Clinic, Setia Mayuri" },
+        { time: "12:45", serviceType: "bus", note: "Tiara East / Tetris Apartment" },
+        { time: "19:15", serviceType: "bus", note: "Tiara East / Tetris Apartment" },
+        { time: "20:45", serviceType: "bus", note: "Tiara East / Tetris Apartment" },
       ],
     },
     friday: {
-      out: [{ time: "17:15", serviceType: "van" }],
+      out: [
+        { time: "17:15", serviceType: "van" },
+        { time: "18:30", serviceType: "bus" },
+      ],
       in: [
-        { time: "08:30", serviceType: "bus", note: "Tiara East / Tetris Apartment" },
         { time: "08:45", serviceType: "van", note: "Near Qualitas Clinic, Setia Mayuri" },
-        { time: "08:45", serviceType: "bus", note: "Tiara East / Tetris Apartment" },
+        { time: "09:30", serviceType: "van", note: "Near Qualitas Clinic, Setia Mayuri" },
+        { time: "12:45", serviceType: "bus", note: "Tiara East / Tetris Apartment" },
+        { time: "19:15", serviceType: "bus", note: "Tiara East / Tetris Apartment" },
+        { time: "20:45", serviceType: "bus", note: "Tiara East / Tetris Apartment" },
       ],
     },
     weekend: { out: [], in: [] },
     publicHoliday: { out: [], in: [] },
     notes: {
-      out: "Route C: Monday-Friday van service. Pass and stop at Tiara East and Tetris Apartment. No dedicated Route C service on weekends or public holidays. Weekend IOI City Mall buses (Route F) stop at TTS on the way to IOI; no TTS pick-up times are published. Route F does not run on public holidays.",
-      in: "Route C: The 08:45 van passes the roadside near Qualitas Clinic, Setia Mayuri. The 08:30 and 08:45 buses stop at Tiara East and Tetris Apartment. No dedicated Route C service on weekends or public holidays; Kajang buses (Route B) stop at TTS en route to campus. Weekend IOI buses (Route F) also stop at TTS en route to campus, except on public holidays. Connecting services do not publish TTS pick-up times.",
+      out: "Route C: Monday-Friday van and bus services. Pass and stop at Tiara East and Tetris Apartment. No dedicated Route C service on weekends or public holidays. Weekend IOI City Mall buses (Route F) stop at TTS on the way to IOI; no TTS pick-up times are published. Route F does not run on public holidays.",
+      in: "Route C: The 08:45 and 09:30 vans pass the roadside near Qualitas Clinic, Setia Mayuri. The 12:45, 19:15 and 20:45 buses stop at Tiara East and Tetris Apartment. No dedicated Route C service on weekends or public holidays; Kajang buses (Route B) stop at TTS en route to campus. Weekend IOI buses (Route F) also stop at TTS en route to campus, except on public holidays. Connecting services do not publish TTS pick-up times.",
     },
   },
   LOTUS: {
     weekday: {
-      out: [{ time: "18:30", serviceType: "bus" }],
-      in: [{ time: "21:00", serviceType: "bus" }],
+      out: [{ time: "19:00", serviceType: "bus" }],
+      in: [{ time: "21:30", serviceType: "bus" }],
     },
     friday: {
-      out: [{ time: "18:30", serviceType: "bus" }],
-      in: [{ time: "21:00", serviceType: "bus" }],
+      out: [{ time: "19:00", serviceType: "bus" }],
+      in: [{ time: "21:30", serviceType: "bus" }],
     },
-    weekend: { out: [], in: [] },
+    weekend: {
+      out: [{ time: "11:30", serviceType: "bus", note: "Saturday only", saturdayOnly: true }],
+      in: [{ time: "15:15", serviceType: "bus", note: "Saturday only", saturdayOnly: true }],
+    },
     publicHoliday: { out: [], in: [] },
     notes: {
-      out: "Route D: Monday-Friday only. Pass and stop at Ecohill Walk Mall after LOTUS Semenyih. No service on weekends or public holidays.",
-      in: "Route D: Monday-Friday only. Pass and stop at Ecohill Walk Mall before proceeding to campus. No service on weekends or public holidays.",
+      out: "Route D: Monday-Friday and Saturday only. Pass and stop at Ecohill Walk Mall after LOTUS Semenyih. No service on Sundays or public holidays.",
+      in: "Route D: Monday-Friday and Saturday only. Pass and stop at Ecohill Walk Mall before proceeding to campus. No service on Sundays or public holidays.",
     },
   },
   MosquePGA: {
@@ -239,8 +257,11 @@ export function getBusSchedule(
   destination: string,
   scheduleType: ScheduleType,
   direction: "out" | "in",
+  date?: Date,
 ): ScheduleEntry[] {
-  return busSchedule[destination]?.[scheduleType]?.[direction] || []
+  const entries = busSchedule[destination]?.[scheduleType]?.[direction] || []
+  // Without a date, return all slots for the full timetable, including Saturday-only trips.
+  return date ? entries.filter((entry) => !entry.saturdayOnly || date.getDay() === 6) : entries
 }
 
 export function getBusNextDeparture(
@@ -249,7 +270,7 @@ export function getBusNextDeparture(
   direction: "out" | "in",
   currentTime: Date,
 ): string | null {
-  const scheduleEntries = getBusSchedule(destination, scheduleType, direction)
+  const scheduleEntries = getBusSchedule(destination, scheduleType, direction, currentTime)
   const currentTimeString = format(currentTime, "HH:mm")
   const nextEntry = scheduleEntries.find((entry) => entry.time > currentTimeString)
   return nextEntry ? nextEntry.time : null

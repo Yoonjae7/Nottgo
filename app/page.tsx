@@ -68,8 +68,8 @@ export default function Home() {
   const buggyArrivalTimes = mounted ? getBuggyArrivalTimes(selectedStop, isFriday) : []
 
   const busScheduleType = isPublicHoliday ? "publicHoliday" : scheduleType
-  const busOutSchedule = mounted ? getBusSchedule(selectedDestination, busScheduleType, "out") : []
-  const busInSchedule = mounted ? getBusSchedule(selectedDestination, busScheduleType, "in") : []
+  const busOutSchedule = mounted ? getBusSchedule(selectedDestination, busScheduleType, "out", currentTime) : []
+  const busInSchedule = mounted ? getBusSchedule(selectedDestination, busScheduleType, "in", currentTime) : []
   const busNextDepartureOut = mounted ? getBusNextDeparture(selectedDestination, busScheduleType, "out", currentTime) : null
   const busNextDepartureIn = mounted ? getBusNextDeparture(selectedDestination, busScheduleType, "in", currentTime) : null
 
