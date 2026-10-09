@@ -5,6 +5,7 @@ import { createPortal } from "react-dom"
 import { Circle, CircleMarker, MapContainer, Marker, TileLayer, Tooltip, useMap } from "react-leaflet"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
+import { STOPS, DESTINATION_STOP_IDS, type ShuttleStop } from "@/lib/shuttleStops"
 
 const cartoBasemapKey = process.env.NEXT_PUBLIC_CARTO_BASEMAP_KEY?.trim()
 const basemap = cartoBasemapKey
@@ -21,38 +22,9 @@ const basemap = cartoBasemapKey
       subdomains: undefined,
     }
 
-type Destination = {
-  id: string
-  label: string
-  name: string
-  lat: number
-  lng: number
-}
-
-// UNM assigned shuttle stopping points (June 2025). IOI uses the mapped mall location
-// because the university stopping-point document does not publish a coordinate for it.
-const DESTINATIONS: Destination[] = [
-  { id: "tbs", label: "TBS", name: "Terminal Bersepadu Selatan", lat: 3.07829, lng: 101.7111 },
-  { id: "kajang", label: "KJG", name: "Kajang KTM/MRT - Gate A", lat: 2.98292, lng: 101.79007 },
-  { id: "tts", label: "TTS", name: "Taman Tasik Semenyih", lat: 2.949533, lng: 101.872852 },
-  { id: "lotus", label: "LOT", name: "Lotus's Semenyih", lat: 2.92892, lng: 101.85602 },
-  { id: "ecohill", label: "ECO", name: "Ecohill Walk Mall", lat: 2.92548, lng: 101.85747 },
-  { id: "pga", label: "PGA", name: "PGA Semenyih Pelangi Mosque", lat: 2.95468, lng: 101.87299 },
-  { id: "ioi", label: "IOI", name: "IOI City Mall, Putrajaya", lat: 2.96946, lng: 101.71421 },
-]
-
-const DESTINATION_ROUTE_STOPS: Record<string, string[]> = {
-  TBS: ["tbs"],
-  KajangMRT: ["kajang"],
-  TTS: ["tts"],
-  LOTUS: ["lotus", "ecohill"],
-  MosquePGA: ["pga"],
-  IOICityMall: ["ioi"],
-}
-
-function getDestinationStops(selectedDestination: string): Destination[] {
-  const stopIds = new Set(DESTINATION_ROUTE_STOPS[selectedDestination] ?? [])
-  return DESTINATIONS.filter((destination) => stopIds.has(destination.id))
+function getDestinationStops(selectedDestination: string): ShuttleStop[] {
+  const stopIds = new Set(DESTINATION_STOP_IDS[selectedDestination] ?? [])
+  return STOPS.filter((destination) => stopIds.has(destination.id))
 }
 
 type Point = {
@@ -530,7 +502,7 @@ export default function LiveBusMap({ vehicles, trackKey, selectedDestination }: 
   const icon = useMemo(() => (v ? createBusIcon(v.carNumber, off) : null), [v?.carNumber, off])
   const destinationIcons = useMemo(
     () =>
-      new Map(DESTINATIONS.map((destination) => [destination.id, createDestinationIcon(destination.label)] as const)),
+      new Map(STOPS.map((destination) => [destination.id, createDestinationIcon(destination.label)] as const)),
     [],
   )
 

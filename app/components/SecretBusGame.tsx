@@ -4,6 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { ChevronLeft, ChevronRight, Clock3, Pause, Play, RotateCcw, Trophy, X } from "lucide-react"
 import * as THREE from "three"
 import { isTightNearMiss, lateDodgeTimeToCone, NEAR_MISS_DODGE_WINDOW_SECONDS } from "@/lib/nearMiss"
+import { createCampusBus } from "@/lib/campusBus"
+import { loadCampusBranding } from "@/lib/campusBranding"
+import { createCampusScenery } from "@/lib/campusScenery"
+import { GAME_JOURNEY, getJourneyProgress } from "@/lib/gameJourney"
+import { createGameSceneryModels } from "@/lib/gameSceneryModels"
 
 type Phase = "ready" | "playing" | "paused" | "game-over"
 
@@ -29,6 +34,7 @@ const ACCELERATION_KMH = 0.9
 const START_WORLD_SPEED = 13
 const MAX_WORLD_SPEED = 130
 const NEAR_MISS_POINTS = 25
+const ROAD_MARKER_SPAN = 196
 
 function worldSpeedFor(speedKmh: number): number {
   const progress = (speedKmh - START_SPEED_KMH) / (MAX_SPEED_KMH - START_SPEED_KMH)
@@ -56,111 +62,6 @@ function Speedometer({ speedKmh }: { speedKmh: number }) {
       </div>
     </div>
   )
-}
-
-function makeTextTexture(
-  lines: string[],
-  options: { background?: string; color?: string; width?: number; height?: number } = {},
-) {
-  const canvas = document.createElement("canvas")
-  canvas.width = options.width ?? 768
-  canvas.height = options.height ?? 256
-  const context = canvas.getContext("2d")!
-  context.fillStyle = options.background ?? "#10263b"
-  context.fillRect(0, 0, canvas.width, canvas.height)
-  context.fillStyle = options.color ?? "#ffffff"
-  context.textAlign = "center"
-  context.textBaseline = "middle"
-  lines.forEach((line, index) => {
-    context.font = index === 0 ? "700 58px Arial, sans-serif" : "600 36px Arial, sans-serif"
-    context.fillText(line, canvas.width / 2, canvas.height * (0.36 + index * 0.34))
-  })
-  const texture = new THREE.CanvasTexture(canvas)
-  texture.colorSpace = THREE.SRGBColorSpace
-  texture.anisotropy = 4
-  return texture
-}
-
-function addBox(
-  parent: THREE.Object3D,
-  size: [number, number, number],
-  position: [number, number, number],
-  color: THREE.ColorRepresentation,
-  roughness = 0.72,
-) {
-  const mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(...size),
-    new THREE.MeshStandardMaterial({ color, roughness, metalness: 0.08 }),
-  )
-  mesh.position.set(...position)
-  mesh.castShadow = true
-  mesh.receiveShadow = true
-  parent.add(mesh)
-  return mesh
-}
-
-function createBus() {
-  const bus = new THREE.Group()
-  const navy = "#10263b"
-  const cream = "#f8fafc"
-
-  addBox(bus, [2.18, 1.45, 4.05], [0, 1.22, 0], cream)
-  addBox(bus, [2.22, 0.58, 4.08], [0, 0.62, 0], navy)
-  addBox(bus, [2.08, 0.18, 3.74], [0, 2.02, -0.02], navy)
-  addBox(bus, [1.82, 0.7, 0.08], [0, 1.52, -2.055], "#8cc8dc", 0.3)
-  addBox(bus, [1.82, 0.67, 0.08], [0, 1.5, 2.055], "#173b54", 0.3)
-  addBox(bus, [0.42, 0.1, 0.09], [-0.65, 0.73, -2.105], "#fff1a8", 0.3)
-  addBox(bus, [0.42, 0.1, 0.09], [0.65, 0.73, -2.105], "#fff1a8", 0.3)
-  addBox(bus, [0.28, 0.12, 0.09], [-0.72, 0.72, 2.105], "#ef4444", 0.3)
-  addBox(bus, [0.28, 0.12, 0.09], [0.72, 0.72, 2.105], "#ef4444", 0.3)
-
-  const rearBrandTexture = makeTextTexture(["NOTTINGHAM", "CAMPUS SHUTTLE"], {
-    width: 512,
-    height: 192,
-  })
-  const rearBrand = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.42, 0.48),
-    new THREE.MeshBasicMaterial({ map: rearBrandTexture }),
-  )
-  rearBrand.position.set(0, 0.92, 2.112)
-  bus.add(rearBrand)
-
-  for (const side of [-1, 1]) {
-    for (const z of [-1.2, -0.35, 0.5, 1.35]) {
-      const window = addBox(bus, [0.05, 0.58, 0.67], [side * 1.105, 1.5, z], "#78afc5", 0.25)
-      window.material = new THREE.MeshStandardMaterial({ color: "#78afc5", roughness: 0.25, metalness: 0.2 })
-    }
-  }
-
-  const brandTexture = makeTextTexture(["UNIVERSITY OF NOTTINGHAM", "MALAYSIA • NOTTGO"])
-  for (const side of [-1, 1]) {
-    const label = new THREE.Mesh(
-      new THREE.PlaneGeometry(2.25, 0.75),
-      new THREE.MeshBasicMaterial({ map: brandTexture, side: THREE.DoubleSide }),
-    )
-    label.position.set(side * 1.132, 0.96, 0.22)
-    label.rotation.y = side * Math.PI / 2
-    bus.add(label)
-  }
-
-  const wheels: THREE.Mesh[] = []
-  for (const x of [-1.13, 1.13]) {
-    for (const z of [-1.36, 1.34]) {
-      const wheel = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.35, 0.35, 0.22, 18),
-        new THREE.MeshStandardMaterial({ color: "#111827", roughness: 0.8 }),
-      )
-      wheel.position.set(x, 0.4, z)
-      wheel.rotation.z = Math.PI / 2
-      wheel.castShadow = true
-      bus.add(wheel)
-      wheels.push(wheel)
-    }
-  }
-
-  bus.userData.wheels = wheels
-  bus.position.set(0, 0, BUS_Z)
-  return bus
 }
 
 function createClock() {
@@ -204,40 +105,6 @@ function createCone() {
   return group
 }
 
-function createTree(x: number, z: number) {
-  const group = new THREE.Group()
-  const trunk = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.13, 0.18, 1.25, 8),
-    new THREE.MeshStandardMaterial({ color: "#7c4a2d", roughness: 1 }),
-  )
-  trunk.position.y = 0.62
-  const crown = new THREE.Mesh(
-    new THREE.IcosahedronGeometry(0.78, 1),
-    new THREE.MeshStandardMaterial({ color: x < 0 ? "#20854a" : "#2f9d5b", roughness: 0.95 }),
-  )
-  crown.position.y = 1.72
-  crown.castShadow = true
-  group.add(trunk, crown)
-  group.position.set(x, 0, z)
-  return group
-}
-
-function createBuilding(x: number, z: number, index: number) {
-  const group = new THREE.Group()
-  const height = 2.8 + (index % 3) * 0.8
-  addBox(group, [3.8, height, 3.1], [0, height / 2, 0], index % 2 ? "#e6e0d2" : "#d8e0e5", 0.95)
-  const windowMaterial = new THREE.MeshBasicMaterial({ color: "#8fc5dc" })
-  for (let row = 0; row < 2; row++) {
-    for (let column = -1; column <= 1; column++) {
-      const window = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.42), windowMaterial)
-      window.position.set(column * 0.9, 1.05 + row * 1.05, 1.556)
-      group.add(window)
-    }
-  }
-  group.position.set(x, 0, z)
-  return group
-}
-
 export default function SecretBusGame({ onClose }: { onClose: () => void }) {
   const mountRef = useRef<HTMLDivElement>(null)
   const apiRef = useRef<GameApi | null>(null)
@@ -248,7 +115,8 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
   const [collected, setCollected] = useState(0)
   const [displaySpeedKmh, setDisplaySpeedKmh] = useState(START_SPEED_KMH)
   const [nearMissCount, setNearMissCount] = useState(0)
-  const [nearMissFlash, setNearMissFlash] = useState(false)
+  const [showNearMiss, setShowNearMiss] = useState(false)
+  const [journey, setJourney] = useState(() => getJourneyProgress(0))
 
   closeRef.current = onClose
 
@@ -322,7 +190,7 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
       scene.add(shoulder)
     }
 
-    const movingWorld: THREE.Object3D[] = []
+    const roadMarkers: THREE.Object3D[] = []
     const dashMaterial = new THREE.MeshBasicMaterial({ color: "#f8fafc" })
     for (const x of [-1.45, 1.45]) {
       for (let index = 0; index < 28; index++) {
@@ -330,7 +198,7 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
         dash.rotation.x = -Math.PI / 2
         dash.position.set(x, 0.035, 15 - index * 7)
         scene.add(dash)
-        movingWorld.push(dash)
+        roadMarkers.push(dash)
       }
     }
 
@@ -342,21 +210,38 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
         marker.rotation.x = -Math.PI / 2
         marker.position.set(x, 0.038, 15 - index * 7)
         scene.add(marker)
-        movingWorld.push(marker)
+        roadMarkers.push(marker)
       }
     }
 
-    for (let index = 0; index < 25; index++) {
-      const z = 8 - index * 7.2
-      const side = index % 2 === 0 ? -1 : 1
-      const object = index % 3 === 0
-        ? createBuilding(side * (8.5 + (index % 2) * 1.4), z, index)
-        : createTree(side * (6.8 + (index % 3)), z)
-      scene.add(object)
-      movingWorld.push(object)
+    const initialRoadZ = roadMarkers.map((object) => object.position.z)
+    const branding = loadCampusBranding()
+    const sceneryModels = createGameSceneryModels(branding)
+    sceneryModels.forEach(({ object }) => scene.add(object))
+    const scenery = createCampusScenery(sceneryModels, {
+      viewportAspect: mount.clientWidth / mount.clientHeight,
+      stages: GAME_JOURNEY,
+    })
+
+    const environmentPalettes = GAME_JOURNEY.map(({ palette }) => ({
+      sky: new THREE.Color(palette.sky), ground: new THREE.Color(palette.ground),
+      road: new THREE.Color(palette.road), shoulder: new THREE.Color(palette.shoulder),
+    }))
+    const updateEnvironment = () => {
+      const progress = scenery.getProgress()
+      const current = environmentPalettes[progress.stageIndex]
+      const next = environmentPalettes[Math.min(progress.stageIndex + 1, environmentPalettes.length - 1)]
+      const blend = THREE.MathUtils.smoothstep(progress.stageProgress, 0.65, 1)
+      ;(scene.background as THREE.Color).copy(current.sky).lerp(next.sky, blend)
+      ;(scene.fog as THREE.Fog).color.copy(scene.background as THREE.Color)
+      ground.material.color.copy(current.ground).lerp(next.ground, blend)
+      road.material.color.copy(current.road).lerp(next.road, blend)
+      shoulderMaterial.color.copy(current.shoulder).lerp(next.shoulder, blend)
+      return progress
     }
 
-    const bus = createBus()
+    const bus = createCampusBus(branding)
+    bus.position.z = BUS_Z
     scene.add(bus)
 
     const entities: Entity[] = []
@@ -402,8 +287,13 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
       setBest(nextScore)
     }
 
-    const reset = () => {
+    const reset = (rerollScenery: boolean) => {
       clearEntities()
+      roadMarkers.forEach((object, index) => {
+        object.position.z = initialRoadZ[index]
+      })
+      if (rerollScenery) scenery.reset()
+      setJourney(updateEnvironment())
       laneIndex = 1
       targetX = LANES[laneIndex]
       distance = 0
@@ -415,7 +305,7 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
       drivingSeconds = 0
       spawnTimer = 0.65
       window.clearTimeout(nearMissTimeout)
-      setNearMissFlash(false)
+      setShowNearMiss(false)
       bus.position.x = 0
       bus.position.y = 0
       bus.rotation.set(0, 0, 0)
@@ -426,7 +316,7 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
     }
 
     const start = () => {
-      if (phaseValue === "ready" || phaseValue === "game-over") reset()
+      if (phaseValue === "ready" || phaseValue === "game-over") reset(phaseValue === "game-over")
       changePhase("playing")
     }
 
@@ -540,10 +430,12 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
           wheel.rotation.x -= worldSpeed * delta * 0.75
         })
 
-        movingWorld.forEach((object) => {
+        roadMarkers.forEach((object) => {
           object.position.z += worldSpeed * delta
-          if (object.position.z > 18) object.position.z -= 196
+          if (object.position.z > 18) object.position.z -= ROAD_MARKER_SPAN
         })
+        scenery.update(worldSpeed * delta)
+        const journeyProgress = updateEnvironment()
 
         for (let index = entities.length - 1; index >= 0; index--) {
           const entity = entities[index]
@@ -587,9 +479,9 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
             nearMisses += 1
             setNearMissCount(nearMisses)
             setScore(Math.floor(distance) + clocks * 50 + bonusPoints)
-            setNearMissFlash(true)
+            setShowNearMiss(true)
             window.clearTimeout(nearMissTimeout)
-            nearMissTimeout = window.setTimeout(() => setNearMissFlash(false), 900)
+            nearMissTimeout = window.setTimeout(() => setShowNearMiss(false), 900)
           } else if (entity.object.position.z > 13) {
             entities.splice(index, 1)
             removeEntity(entity)
@@ -600,6 +492,7 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
         if (elapsedSinceUi > 0.1) {
           setScore(Math.floor(distance) + clocks * 50 + bonusPoints)
           setDisplaySpeedKmh(speedKmh)
+          setJourney(journeyProgress)
           elapsedSinceUi = 0
         }
       } else if (phaseValue === "ready") {
@@ -665,6 +558,22 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
       <header className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-3 p-4 sm:p-6">
         <div className="min-w-0">
           <h2 className="text-xl font-black tracking-tight drop-shadow-md sm:text-3xl">NottGo: Campus Run</h2>
+          <p className="mt-1 truncate text-[10px] font-semibold text-white/90 sm:text-xs" role="status" title={journey.stage.name}>
+            {journey.stage.label}
+            <span className="ml-2 font-normal text-white/60">
+              {journey.nextStage ? `→ ${journey.nextStage.label}` : "• Final stop"}
+            </span>
+          </p>
+          <div
+            className="mt-1 h-0.5 max-w-[230px] overflow-hidden rounded-full bg-white/20"
+            role="progressbar"
+            aria-label={journey.nextStage ? `Journey to ${journey.nextStage.name}` : "Final destination reached"}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(journey.stageProgress * 100)}
+          >
+            <div className="h-full bg-emerald-300 transition-[width] duration-150" style={{ width: `${journey.stageProgress * 100}%` }} />
+          </div>
         </div>
         <button
           type="button"
@@ -678,9 +587,20 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
       </header>
 
       <div className="pointer-events-none absolute left-4 right-4 top-[5.2rem] z-10 grid grid-cols-[1fr_auto_1fr] items-start gap-1 sm:left-6 sm:right-6 sm:top-24">
-        <div className="justify-self-start rounded-xl border border-white/15 bg-[#10263b]/78 px-3 py-2 shadow-lg backdrop-blur-sm">
-          <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/55">Score</p>
-          <p className="font-mono text-lg font-black tabular-nums sm:text-2xl">{score.toString().padStart(4, "0")}</p>
+        <div className="flex flex-col items-start gap-2 justify-self-start">
+          <div className="rounded-xl border border-white/15 bg-[#10263b]/78 px-3 py-2 shadow-lg backdrop-blur-sm">
+            <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/55">Score</p>
+            <p className="font-mono text-lg font-black tabular-nums sm:text-2xl">{score.toString().padStart(4, "0")}</p>
+          </div>
+          {showNearMiss && phase === "playing" && (
+            <div
+              key={nearMissCount}
+              role="status"
+              className="whitespace-nowrap rounded-lg border border-emerald-200/40 bg-[#10263b]/90 px-2 py-1 text-[10px] font-black text-emerald-200 shadow-lg animate-[nearMissPop_900ms_ease-out_both] motion-reduce:animate-none sm:text-xs"
+            >
+              NEAR MISS <span className="ml-1 text-white">+{NEAR_MISS_POINTS}</span>
+            </div>
+          )}
         </div>
         <div className="justify-self-center">
           {phase === "playing" && <Speedometer speedKmh={displaySpeedKmh} />}
@@ -697,22 +617,6 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
         </div>
       </div>
 
-      {nearMissFlash && phase === "playing" && (
-        <>
-          <div
-            className="pointer-events-none absolute inset-0 z-[15] animate-[nearMissGlow_900ms_ease-out_both] motion-reduce:animate-none"
-            aria-hidden="true"
-          />
-          <div
-            key={nearMissCount}
-            role="status"
-            className="pointer-events-none absolute left-1/2 top-[42%] z-[16] -translate-x-1/2 whitespace-nowrap rounded-full border border-emerald-200/60 bg-[#10263b]/90 px-4 py-2 text-sm font-black tracking-wide text-emerald-200 shadow-xl animate-[nearMissPop_900ms_ease-out_both] motion-reduce:animate-none"
-          >
-            NEAR MISS <span className="ml-1 text-white">+{NEAR_MISS_POINTS}</span>
-          </div>
-        </>
-      )}
-
       {phase !== "playing" && (
         <div className="absolute inset-0 z-20 grid place-items-center bg-[#08131f]/55 px-5">
           <div className="w-full max-w-sm text-center drop-shadow-lg">
@@ -721,7 +625,7 @@ export default function SecretBusGame({ onClose }: { onClose: () => void }) {
             </h3>
             <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-white/90">
               {phase === "ready"
-                ? "Clocks +50. Dodge a cone at the last second for +25. Don't crash."
+                ? "Drive from Nottingham through the shuttle stops. Clocks +50, last-second dodges +25. Don't crash."
                 : phase === "paused"
                   ? "Your route is waiting."
                   : nearMissCount > 0
