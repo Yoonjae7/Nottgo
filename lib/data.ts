@@ -35,6 +35,7 @@ export interface ScheduleEntry {
   serviceType: ServiceType
   note?: string
   saturdayOnly?: boolean
+  sundayOnly?: boolean
 }
 
 type DirectionSchedule = { out: ScheduleEntry[]; in: ScheduleEntry[] }
@@ -51,7 +52,7 @@ export const busDestinations = [
   { id: "IOICityMall", name: "IOI City Mall, Putrajaya" },
 ]
 
-// Times: UNM Shuttle Bus Schedule, effective 10 October 2026 (pages 1-3).
+// Times: UNM Shuttle Bus Schedule, effective 24 October 2026 (pages 1-4).
 export const busSchedule: Record<string, BusRouteSchedule> = {
   TBS: {
     weekday: {
@@ -126,7 +127,7 @@ export const busSchedule: Record<string, BusRouteSchedule> = {
     },
     weekend: {
       out: [
-        { time: "08:45", serviceType: "bus" },
+        { time: "08:20", serviceType: "bus" },
         { time: "12:00", serviceType: "bus" },
         { time: "14:00", serviceType: "bus" },
         { time: "17:00", serviceType: "bus" },
@@ -134,7 +135,7 @@ export const busSchedule: Record<string, BusRouteSchedule> = {
         { time: "21:30", serviceType: "bus" },
       ],
       in: [
-        { time: "07:45", serviceType: "bus" },
+        { time: "07:20", serviceType: "bus" },
         { time: "10:30", serviceType: "bus" },
         { time: "13:00", serviceType: "bus" },
         { time: "15:00", serviceType: "bus" },
@@ -146,7 +147,7 @@ export const busSchedule: Record<string, BusRouteSchedule> = {
     },
     publicHoliday: {
       out: [
-        { time: "08:45", serviceType: "bus" },
+        { time: "08:20", serviceType: "bus" },
         { time: "12:00", serviceType: "bus" },
         { time: "14:00", serviceType: "bus" },
         { time: "17:00", serviceType: "bus" },
@@ -154,7 +155,7 @@ export const busSchedule: Record<string, BusRouteSchedule> = {
         { time: "21:30", serviceType: "bus" },
       ],
       in: [
-        { time: "07:45", serviceType: "bus" },
+        { time: "07:20", serviceType: "bus" },
         { time: "10:30", serviceType: "bus" },
         { time: "13:00", serviceType: "bus" },
         { time: "15:00", serviceType: "bus" },
@@ -181,19 +182,20 @@ export const busSchedule: Record<string, BusRouteSchedule> = {
         { time: "17:00", serviceType: "van" },
         { time: "18:30", serviceType: "bus" },
         { time: "19:45", serviceType: "bus" },
-        { time: "21:30", serviceType: "bus" },
+        { time: "22:30", serviceType: "bus" },
       ],
       in: [
-        { time: "08:20", serviceType: "bus", note: "Rest 1, Setia Mayuri" },
-        { time: "09:15", serviceType: "van", note: "Rest 1, Setia Mayuri" },
-        { time: "10:10", serviceType: "van", note: "Rest 1, Setia Mayuri" },
-        { time: "11:30", serviceType: "van", note: "Rest 1, Setia Mayuri" },
-        { time: "12:20", serviceType: "bus", note: "Rest 1, Setia Mayuri" },
-        { time: "14:30", serviceType: "van", note: "Rest 1, Setia Mayuri" },
-        { time: "15:10", serviceType: "van", note: "Rest 1, Setia Mayuri" },
-        { time: "16:20", serviceType: "bus", note: "Rest 1, Setia Mayuri" },
-        { time: "19:20", serviceType: "bus", note: "Rest 1, Setia Mayuri" },
-        { time: "20:20", serviceType: "bus", note: "Rest 1, Setia Mayuri" },
+        { time: "08:20", serviceType: "bus", note: "Midlands" },
+        { time: "09:15", serviceType: "van", note: "Midlands" },
+        { time: "10:10", serviceType: "van", note: "Midlands" },
+        { time: "11:30", serviceType: "van", note: "Midlands" },
+        { time: "12:20", serviceType: "bus", note: "Midlands" },
+        { time: "14:30", serviceType: "van", note: "Midlands" },
+        { time: "15:10", serviceType: "van", note: "Midlands" },
+        { time: "16:10", serviceType: "van", note: "Midlands" },
+        { time: "17:10", serviceType: "van", note: "Midlands" },
+        { time: "19:20", serviceType: "bus", note: "Midlands" },
+        { time: "20:20", serviceType: "bus", note: "Midlands" },
       ],
     },
     friday: {
@@ -207,26 +209,62 @@ export const busSchedule: Record<string, BusRouteSchedule> = {
         { time: "17:00", serviceType: "van" },
         { time: "18:30", serviceType: "bus" },
         { time: "19:45", serviceType: "bus" },
-        { time: "21:30", serviceType: "bus" },
+        { time: "22:30", serviceType: "bus" },
       ],
       in: [
-        { time: "08:20", serviceType: "bus", note: "Rest 1, Setia Mayuri" },
-        { time: "09:15", serviceType: "van", note: "Rest 1, Setia Mayuri" },
-        { time: "10:10", serviceType: "van", note: "Rest 1, Setia Mayuri" },
-        { time: "11:30", serviceType: "van", note: "Rest 1, Setia Mayuri" },
-        { time: "12:20", serviceType: "bus", note: "Rest 1, Setia Mayuri" },
-        { time: "14:30", serviceType: "van", note: "Rest 1, Setia Mayuri" },
-        { time: "15:10", serviceType: "van", note: "Rest 1, Setia Mayuri" },
-        { time: "16:20", serviceType: "bus", note: "Rest 1, Setia Mayuri" },
-        { time: "19:20", serviceType: "bus", note: "Rest 1, Setia Mayuri" },
-        { time: "20:20", serviceType: "bus", note: "Rest 1, Setia Mayuri" },
+        { time: "08:20", serviceType: "bus", note: "Midlands" },
+        { time: "09:15", serviceType: "van", note: "Midlands" },
+        { time: "10:10", serviceType: "van", note: "Midlands" },
+        { time: "11:30", serviceType: "van", note: "Midlands" },
+        { time: "12:20", serviceType: "bus", note: "Midlands" },
+        { time: "14:30", serviceType: "van", note: "Midlands" },
+        { time: "15:10", serviceType: "van", note: "Midlands" },
+        { time: "16:10", serviceType: "van", note: "Midlands" },
+        { time: "17:10", serviceType: "van", note: "Midlands" },
+        { time: "19:20", serviceType: "bus", note: "Midlands" },
+        { time: "20:20", serviceType: "bus", note: "Midlands" },
       ],
     },
-    weekend: { out: [], in: [] },
-    publicHoliday: { out: [], in: [] },
+    weekend: {
+      out: [
+        { time: "14:30", serviceType: "bus", note: "Saturday only", saturdayOnly: true },
+        { time: "16:00", serviceType: "bus", note: "Saturday only", saturdayOnly: true },
+        { time: "17:00", serviceType: "bus", note: "Saturday only", saturdayOnly: true },
+        { time: "18:30", serviceType: "bus" },
+        { time: "21:30", serviceType: "bus" },
+        { time: "23:00", serviceType: "bus" },
+      ],
+      in: [
+        { time: "08:30", serviceType: "bus", note: "Saturday only", saturdayOnly: true },
+        { time: "10:00", serviceType: "bus", note: "Saturday only", saturdayOnly: true },
+        { time: "11:00", serviceType: "bus", note: "Saturday only", saturdayOnly: true },
+        { time: "11:30", serviceType: "bus", note: "Sunday only", sundayOnly: true },
+        { time: "12:00", serviceType: "bus", note: "Saturday only", saturdayOnly: true },
+        { time: "13:45", serviceType: "bus" },
+        { time: "18:00", serviceType: "bus" },
+      ],
+    },
+    publicHoliday: {
+      out: [
+        { time: "14:30", serviceType: "bus" },
+        { time: "16:00", serviceType: "bus" },
+        { time: "17:00", serviceType: "bus" },
+        { time: "18:30", serviceType: "bus" },
+        { time: "21:30", serviceType: "bus" },
+        { time: "23:00", serviceType: "bus" },
+      ],
+      in: [
+        { time: "08:30", serviceType: "bus" },
+        { time: "10:00", serviceType: "bus" },
+        { time: "11:00", serviceType: "bus" },
+        { time: "12:00", serviceType: "bus" },
+        { time: "13:45", serviceType: "bus" },
+        { time: "18:00", serviceType: "bus" },
+      ],
+    },
     notes: {
-      out: "Route C: Monday-Friday only. Vans provide pick-up and drop-off; buses provide drop-off at Rest 1 (Setia Mayuri), Tiara East, Tetris and TTS. No dedicated Route C service on weekends or public holidays. Weekend IOI City Mall services (Route F) also serve TTS 1, TTS 2 and TTS 3; no TTS pick-up times are published. Route F does not run on public holidays.",
-      in: "Route C: First stop is Rest 1, Setia Mayuri. Vans and buses pick up at Rest 1, Tiara East, Tetris and TTS before proceeding to campus. No dedicated Route C service on weekends or public holidays. Saturday LOTUS services (Route D) and weekend IOI services (Route F) provide drop-off at TTS 1, TTS 2 and TTS 3; no TTS pick-up times are published for these services.",
+      out: "Route C: Runs every day. Vans (Monday-Friday) provide pick-up and drop-off; buses provide drop-off at Midlands (first stop), Tiara East, Tetris and TTS. The Saturday timetable also applies on public holidays; Sunday has fewer trips.",
+      in: "Route C: First stop is Midlands. Vans and buses pick up at Midlands, Tiara East, Tetris and TTS before proceeding to campus. The Saturday timetable also applies on public holidays; Sunday has fewer trips.",
     },
   },
   LOTUS: {
@@ -254,10 +292,19 @@ export const busSchedule: Record<string, BusRouteSchedule> = {
         { time: "16:15", serviceType: "bus", note: "Saturday only", saturdayOnly: true },
       ],
     },
-    publicHoliday: { out: [], in: [] },
+    publicHoliday: {
+      out: [
+        { time: "11:30", serviceType: "bus" },
+        { time: "12:30", serviceType: "bus" },
+      ],
+      in: [
+        { time: "15:15", serviceType: "bus" },
+        { time: "16:15", serviceType: "bus" },
+      ],
+    },
     notes: {
-      out: "Route D: Monday-Friday and Saturday only. Drop-off at LOTUS Semenyih and Ecohill Walk Mall. No service on Sundays or public holidays.",
-      in: "Route D: Monday-Friday and Saturday only. Pick-up at LOTUS Semenyih and Ecohill Walk Mall, then drop-off at TTS 1, TTS 2 and TTS 3 before proceeding to campus. No service on Sundays or public holidays.",
+      out: "Route D: Monday-Friday, Saturday and public holidays. Drop-off at LOTUS Semenyih and Ecohill Walk Mall. No service on Sundays.",
+      in: "Route D: Monday-Friday, Saturday and public holidays. Pick-up at LOTUS Semenyih and Ecohill Walk Mall, then drop-off at TTS 1, TTS 2 and TTS 3 before proceeding to campus. No service on Sundays.",
     },
   },
   MosquePGA: {
@@ -277,18 +324,29 @@ export const busSchedule: Record<string, BusRouteSchedule> = {
       out: [
         { time: "12:30", serviceType: "bus", note: "2 buses depart together" },
         { time: "14:30", serviceType: "bus", note: "2 buses depart together" },
-        { time: "18:45", serviceType: "bus" },
+        { time: "18:45", serviceType: "bus", note: "2 buses depart together" },
       ],
       in: [
-        { time: "17:30", serviceType: "bus" },
+        { time: "17:30", serviceType: "bus", note: "2 buses depart together" },
         { time: "20:30", serviceType: "bus", note: "2 buses depart together" },
         { time: "22:15", serviceType: "bus", note: "2 buses depart together" },
       ],
     },
-    publicHoliday: { out: [], in: [] },
+    publicHoliday: {
+      out: [
+        { time: "12:30", serviceType: "bus", note: "2 buses depart together" },
+        { time: "14:30", serviceType: "bus", note: "2 buses depart together" },
+        { time: "18:45", serviceType: "bus", note: "2 buses depart together" },
+      ],
+      in: [
+        { time: "17:30", serviceType: "bus", note: "2 buses depart together" },
+        { time: "20:30", serviceType: "bus", note: "2 buses depart together" },
+        { time: "22:15", serviceType: "bus", note: "2 buses depart together" },
+      ],
+    },
     notes: {
-      out: "Route F: Weekends only; not available on public holidays. Pick-up at UNM and TTS 1, TTS 2 and TTS 3, then drop-off at IOI City Mall. Two buses depart simultaneously at 12:30 and 14:30.",
-      in: "Route F: Weekends only; not available on public holidays. Pick-up at IOI City Mall, then drop-off at TTS 1, TTS 2 and TTS 3 before proceeding to campus. Two buses depart simultaneously at 20:30 and 22:15.",
+      out: "Route F: Weekends and public holidays only. Pick-up at UNM and TTS 1, TTS 2 and TTS 3, then drop-off at IOI City Mall. Two buses depart simultaneously on every trip.",
+      in: "Route F: Weekends and public holidays only. Pick-up at IOI City Mall, then drop-off at TTS 1, TTS 2 and TTS 3 before proceeding to campus. Two buses depart simultaneously on every trip.",
     },
   },
 }
@@ -308,8 +366,13 @@ export function getBusSchedule(
   date?: Date,
 ): ScheduleEntry[] {
   const entries = busSchedule[destination]?.[scheduleType]?.[direction] || []
-  // Without a date, return all slots for the full timetable, including Saturday-only trips.
-  return date ? entries.filter((entry) => !entry.saturdayOnly || date.getDay() === 6) : entries
+  // Without a date, return all slots for the full timetable, including Saturday-only and Sunday-only trips.
+  return date
+    ? entries.filter(
+        (entry) =>
+          (!entry.saturdayOnly || date.getDay() === 6) && (!entry.sundayOnly || date.getDay() === 0),
+      )
+    : entries
 }
 
 export function getBusNextDeparture(
