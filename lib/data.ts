@@ -46,7 +46,7 @@ type BusRouteSchedule = Record<ScheduleType, DirectionSchedule> & {
 export const busDestinations = [
   { id: "TBS", name: "TBS (Ter. Bersepadu Selatan, Level LG)" },
   { id: "KajangMRT", name: "Kajang KTM/MRT Station (Gate A)" },
-  { id: "TTS", name: "TTS (Taman Tasik Semenyih)" },
+  { id: "TTS", name: "TTS / Midlands (Taman Tasik Semenyih)" },
   { id: "LOTUS", name: "LOTUS, Semenyih" },
   { id: "MosquePGA", name: "PGA Mosque, Semenyih Pelangi (Friday Only)" },
   { id: "IOICityMall", name: "IOI City Mall, Putrajaya" },
