@@ -52,7 +52,7 @@ export const busDestinations = [
   { id: "IOICityMall", name: "IOI City Mall, Putrajaya" },
 ]
 
-// Times: UNM Shuttle Bus Schedule, effective 24 October 2026 (pages 1-4).
+// Times: UNM Shuttle Bus Schedule, effective 31 October 2026 (pages 1-4).
 export const busSchedule: Record<string, BusRouteSchedule> = {
   TBS: {
     weekday: {
@@ -128,8 +128,10 @@ export const busSchedule: Record<string, BusRouteSchedule> = {
     weekend: {
       out: [
         { time: "08:20", serviceType: "bus" },
+        { time: "10:20", serviceType: "bus" },
         { time: "12:00", serviceType: "bus" },
         { time: "14:00", serviceType: "bus" },
+        { time: "16:00", serviceType: "bus" },
         { time: "17:00", serviceType: "bus" },
         { time: "19:00", serviceType: "bus" },
         { time: "21:30", serviceType: "bus" },
@@ -148,8 +150,10 @@ export const busSchedule: Record<string, BusRouteSchedule> = {
     publicHoliday: {
       out: [
         { time: "08:20", serviceType: "bus" },
+        { time: "10:20", serviceType: "bus" },
         { time: "12:00", serviceType: "bus" },
         { time: "14:00", serviceType: "bus" },
+        { time: "16:00", serviceType: "bus" },
         { time: "17:00", serviceType: "bus" },
         { time: "19:00", serviceType: "bus" },
         { time: "21:30", serviceType: "bus" },

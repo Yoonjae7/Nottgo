@@ -8,7 +8,7 @@ import {
   getScheduleType,
 } from "../lib/data.ts"
 
-// Independently transcribed from the four pages of the 24 October 2026 PDF.
+// Independently transcribed from the four pages of the 31 October 2026 PDF.
 const mondayToThursday = {
   TBS: { out: "18:45", in: "07:45" },
   KajangMRT: {
@@ -21,7 +21,7 @@ const mondayToThursday = {
 }
 const weekend = {
   TBS: { out: "", in: "" },
-  KajangMRT: { out: "08:20 12:00 14:00 17:00 19:00 21:30", in: "07:20 10:30 13:00 15:00 17:30 18:30 20:30 22:30" },
+  KajangMRT: { out: "08:20 10:20 12:00 14:00 16:00 17:00 19:00 21:30", in: "07:20 10:30 13:00 15:00 17:30 18:30 20:30 22:30" },
   TTS: { out: "14:30 16:00 17:00 18:30 21:30 23:00", in: "08:30 10:00 11:00 11:30 12:00 13:45 18:00" },
   LOTUS: { out: "11:30 12:30", in: "15:15 16:15" },
   MosquePGA: { out: "", in: "" },
@@ -146,7 +146,7 @@ test("Friday LOTUS has distinct times from Mon-Thu", () => {
   assert.equal(getBusNextDeparture("LOTUS", "weekend", "out", new Date(2026, 9, 10, 11, 31)), "12:30")
 })
 
-test("Kajang stop exceptions and IOI simultaneous bus counts match the 24 October PDF", () => {
+test("Kajang stop exceptions and IOI simultaneous bus counts match the 31 October PDF", () => {
   for (const day of ["weekday", "friday"]) {
     assert.deepEqual(getBusSchedule("KajangMRT", day, "out").filter(({ note }) => note)
       .map(({ time }) => time), ["16:45", "17:15", "17:45"])
