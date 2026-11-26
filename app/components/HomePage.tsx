@@ -144,7 +144,10 @@ export default function HomePage({ initialLive }: { initialLive: LiveContent }) 
 
   return (
     <>
-      {announcement && <AnnouncementBanner announcement={announcement} />}
+      {announcement && (
+        // While the admin panel is open, keep the live banner visible above its backdrop.
+        <AnnouncementBanner announcement={announcement} className={showAdmin ? "sticky top-0 z-[60]" : undefined} />
+      )}
       <main className="relative flex min-h-screen flex-col items-center justify-start px-3 py-6 sm:px-4 sm:py-8 md:px-6">
         <div
           className="pointer-events-none fixed inset-0 -z-10 bg-gradient-to-b from-slate-100 via-sky-50/80 to-emerald-50/60 dark:from-slate-950 dark:via-slate-900 dark:to-emerald-950/40"

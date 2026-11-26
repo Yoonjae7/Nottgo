@@ -1,11 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { ArrowRight, CircleCheck, Megaphone, OctagonAlert, TriangleAlert, X, type LucideIcon } from "lucide-react"
+import { useEffect, useRef } from "react"
+import { ArrowRight, CircleCheck, Megaphone, OctagonAlert, TriangleAlert, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { announcementKey, type Announcement, type AnnouncementTone } from "@/lib/announcement"
+import type { Announcement, AnnouncementTone } from "@/lib/announcement"
 
-const DISMISSED_KEY = "nottgo:dismissed-announcement"
+/** CSS variable with the banner's height, so overlays (the admin panel) can sit below it. */
+export const ANNOUNCEMENT_HEIGHT_VAR = "--announcement-height"
 
 const toneStyles: Record<AnnouncementTone, { bar: string; badge: string; icon: LucideIcon }> = {
   info: {
@@ -32,38 +33,31 @@ const toneStyles: Record<AnnouncementTone, { bar: string; badge: string; icon: L
 
 interface AnnouncementBannerProps {
   announcement: Announcement
-  /** In the admin panel preview: no dismissing and no remembered dismissals. */
+  /** In the admin panel preview: doesn't report its height to the page. */
   preview?: boolean
   className?: string
 }
 
 export default function AnnouncementBanner({ announcement, preview = false, className }: AnnouncementBannerProps) {
-  const key = announcementKey(announcement)
-  const [dismissed, setDismissed] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (preview) return
-    try {
-      setDismissed(localStorage.getItem(DISMISSED_KEY) === key)
-    } catch {
-      setDismissed(false)
+    const element = ref.current
+    if (preview || !element) return
+    const root = document.documentElement.style
+    const observer = new ResizeObserver(() => root.setProperty(ANNOUNCEMENT_HEIGHT_VAR, `${element.offsetHeight}px`))
+    observer.observe(element)
+    return () => {
+      observer.disconnect()
+      root.removeProperty(ANNOUNCEMENT_HEIGHT_VAR)
     }
-  }, [key, preview])
-
-  if (dismissed) return null
+  }, [preview])
 
   const { bar, badge, icon: Icon } = toneStyles[announcement.tone]
-  const dismiss = () => {
-    setDismissed(true)
-    try {
-      localStorage.setItem(DISMISSED_KEY, key)
-    } catch {
-      // Private browsing: it just comes back on the next visit.
-    }
-  }
 
   return (
     <div
+      ref={ref}
       role="region"
       aria-label="Announcement"
       className={cn("relative w-full shadow-md shadow-slate-900/10 animate-in fade-in slide-in-from-top-2 duration-500", bar, className)}
@@ -87,16 +81,6 @@ export default function AnnouncementBanner({ announcement, preview = false, clas
             </a>
           )}
         </div>
-        {!preview && (
-          <button
-            type="button"
-            onClick={dismiss}
-            className="-mr-1 rounded-full p-1.5 opacity-70 transition hover:bg-black/10 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current"
-            aria-label="Dismiss announcement"
-          >
-            <X className="h-4 w-4" aria-hidden />
-          </button>
-        )}
       </div>
     </div>
   )

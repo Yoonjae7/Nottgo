@@ -20,7 +20,7 @@ export const announcementTones: { value: AnnouncementTone; label: string; hint: 
 
 export const ANNOUNCEMENT_LIMITS = { title: 60, message: 280, linkUrl: 500, linkLabel: 30 }
 
-/** Identifies one announcement, so a visitor who dismissed it still sees the next one. */
+/** Identifies an announcement's content, for spotting changes between versions. */
 export const announcementKey = (announcement: Announcement) =>
   JSON.stringify([
     announcement.tone,

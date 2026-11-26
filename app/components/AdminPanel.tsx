@@ -34,6 +34,9 @@ import type { LiveState, SiteContent, VersionEntry } from "@/lib/timetableStore"
 import AnnouncementBanner from "./AnnouncementBanner"
 import type { LiveContent } from "./HomePage"
 
+/** Centre the panel in the space below the live announcement banner (0px when there is none). */
+const belowBanner = "top-[calc(50%_+_var(--announcement-height,0px)_/_2)]"
+
 type Direction = "out" | "in"
 type BuggyRow = { time: string; skipFriday: boolean }
 interface AnnouncementDraft {
@@ -269,7 +272,7 @@ export default function AdminPanel({ onClose, onLiveChange }: AdminPanelProps) {
   if (!data || !draft) {
     return (
       <Dialog open onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className={cn("max-w-sm", belowBanner)}>
           <form onSubmit={unlock} className="space-y-4">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -342,7 +345,10 @@ export default function AdminPanel({ onClose, onLiveChange }: AdminPanelProps) {
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent
-        className="flex max-h-[92vh] max-w-3xl flex-col gap-0 p-0 focus:outline-none"
+        className={cn(
+          "flex max-h-[calc(100dvh_-_var(--announcement-height,0px)_-_2rem)] max-w-3xl flex-col gap-0 p-0 focus:outline-none",
+          belowBanner,
+        )}
         // Don't lose unpublished edits to a stray click or Escape; the close button still works.
         onInteractOutside={(event) => dirty && event.preventDefault()}
         onEscapeKeyDown={(event) => dirty && event.preventDefault()}
