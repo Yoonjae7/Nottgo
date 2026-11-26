@@ -13,9 +13,6 @@ import {
 
 /** Server-only helpers shared by the /api/admin/timetable routes. */
 
-// Override with the ADMIN_PASSWORD environment variable.
-const DEFAULT_ADMIN_PASSWORD = "123321"
-
 export type AdminBody = Record<string, unknown>
 
 export async function readBody(request: Request): Promise<AdminBody> {
@@ -27,16 +24,25 @@ export async function readBody(request: Request): Promise<AdminBody> {
   }
 }
 
-function isCorrectPassword(password: unknown): boolean {
+function isCorrectPassword(password: unknown, expected: string): boolean {
   if (typeof password !== "string") return false
-  const expected = process.env.ADMIN_PASSWORD || DEFAULT_ADMIN_PASSWORD
   const digest = (value: string) => new Uint8Array(createHash("sha256").update(value).digest())
   return timingSafeEqual(digest(password), digest(expected))
 }
 
-/** Returns a 401 response for a wrong password, or null when the request may continue. */
+/**
+ * Returns an error response unless the request has the right password, or null when it may continue.
+ * There is no default password: without ADMIN_PASSWORD set, the admin panel stays locked.
+ */
 export async function rejectWrongPassword(body: AdminBody): Promise<NextResponse | null> {
-  if (isCorrectPassword(body.password)) return null
+  const expected = process.env.ADMIN_PASSWORD
+  if (!expected) {
+    return NextResponse.json(
+      { error: "The admin panel is locked on this deployment because ADMIN_PASSWORD isn't set." },
+      { status: 503 },
+    )
+  }
+  if (isCorrectPassword(body.password, expected)) return null
   // Slow down password guessing a little.
   await new Promise((resolve) => setTimeout(resolve, 500))
   return NextResponse.json({ error: "Wrong password" }, { status: 401 })
