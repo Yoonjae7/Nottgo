@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useCallback, useEffect, useState } from "react"
 import dynamic from "next/dynamic"
 import Image from "next/image"
 import { format } from "date-fns"
@@ -20,6 +20,8 @@ import {
   type ScheduleType,
   type Timetable,
 } from "@/lib/data"
+import type { Announcement } from "@/lib/announcement"
+import AnnouncementBanner from "./AnnouncementBanner"
 import BuggyScheduleDisplay from "./BuggyScheduleDisplay"
 import BusScheduleDisplay from "./BusScheduleDisplay"
 import FullBuggySchedule from "./FullBuggySchedule"
@@ -30,8 +32,24 @@ import LiveBusLocation from "./LiveBusLocation"
 const SecretBusGame = dynamic(() => import("./SecretBusGame"), { ssr: false })
 const AdminPanel = dynamic(() => import("./AdminPanel"), { ssr: false })
 
-export default function HomePage({ initialTimetable }: { initialTimetable: Timetable }) {
-  const [timetable, setTimetable] = useState(initialTimetable)
+/** What everyone sees, tagged with its published version number. */
+export interface LiveContent {
+  version: number
+  timetable: Timetable
+  announcement: Announcement | null
+}
+
+// How often an open page checks for a newly published version (also checked when the tab regains focus).
+const TIMETABLE_REFRESH_MS = 5 * 60 * 1000
+
+export default function HomePage({ initialLive }: { initialLive: LiveContent }) {
+  const [live, setLive] = useState(initialLive)
+  const { timetable, announcement } = live
+  // Only ever move forward: a cached response can be older than what the admin panel just published.
+  const showLive = useCallback(
+    (next: LiveContent) => setLive((current) => (next.version > current.version ? next : current)),
+    [],
+  )
   const [selectedStop, setSelectedStop] = useState<number>(0)
   const [selectedDestination, setSelectedDestination] = useState<string>(busDestinations[0].id)
   const [selectedDirection, setSelectedDirection] = useState<"out" | "in" | null>(null)
@@ -66,6 +84,34 @@ export default function HomePage({ initialTimetable }: { initialTimetable: Timet
     return () => clearInterval(timer)
   }, [])
 
+  // Pages are often left open for hours, so pick up newly published versions without a reload.
+  useEffect(() => {
+    let retry: ReturnType<typeof setTimeout> | undefined
+    const refresh = async () => {
+      if (document.visibilityState !== "visible") return
+      try {
+        const response = await fetch("/api/live")
+        if (!response.ok) return
+        showLive(await response.json())
+        // Right after a publish the cache hands out one stale copy while it rebuilds; check again shortly.
+        const cache = response.headers.get("x-vercel-cache") ?? response.headers.get("x-nextjs-cache")
+        if (cache === "STALE") {
+          clearTimeout(retry)
+          retry = setTimeout(refresh, 3000)
+        }
+      } catch {
+        // Offline or the server is busy: keep showing what we have.
+      }
+    }
+    const timer = setInterval(refresh, TIMETABLE_REFRESH_MS)
+    document.addEventListener("visibilitychange", refresh)
+    return () => {
+      clearInterval(timer)
+      clearTimeout(retry)
+      document.removeEventListener("visibilitychange", refresh)
+    }
+  }, [showLive])
+
   // Cmd+Shift+D (Ctrl+Shift+D on Windows/Linux) opens the password-protected timetable admin panel.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -97,253 +143,256 @@ export default function HomePage({ initialTimetable }: { initialTimetable: Timet
     : null
 
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-start px-3 py-6 sm:px-4 sm:py-8 md:px-6">
-      <div
-        className="pointer-events-none fixed inset-0 -z-10 bg-gradient-to-b from-slate-100 via-sky-50/80 to-emerald-50/60 dark:from-slate-950 dark:via-slate-900 dark:to-emerald-950/40"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none fixed -right-24 top-0 h-72 w-72 rounded-full bg-sky-200/35 blur-3xl dark:bg-sky-600/20"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none fixed -left-20 bottom-0 h-80 w-80 rounded-full bg-emerald-200/30 blur-3xl dark:bg-emerald-700/15"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none fixed left-1/2 top-24 h-48 w-[min(100%,28rem)] -translate-x-1/2 rounded-full bg-primary/[0.07] blur-3xl dark:bg-primary/10"
-        aria-hidden
-      />
+    <>
+      {announcement && <AnnouncementBanner announcement={announcement} />}
+      <main className="relative flex min-h-screen flex-col items-center justify-start px-3 py-6 sm:px-4 sm:py-8 md:px-6">
+        <div
+          className="pointer-events-none fixed inset-0 -z-10 bg-gradient-to-b from-slate-100 via-sky-50/80 to-emerald-50/60 dark:from-slate-950 dark:via-slate-900 dark:to-emerald-950/40"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none fixed -right-24 top-0 h-72 w-72 rounded-full bg-sky-200/35 blur-3xl dark:bg-sky-600/20"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none fixed -left-20 bottom-0 h-80 w-80 rounded-full bg-emerald-200/30 blur-3xl dark:bg-emerald-700/15"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none fixed left-1/2 top-24 h-48 w-[min(100%,28rem)] -translate-x-1/2 rounded-full bg-primary/[0.07] blur-3xl dark:bg-primary/10"
+          aria-hidden
+        />
 
-      <Card className="relative w-full max-w-[95%] sm:max-w-md rounded-2xl border-border/60 bg-card/85 shadow-xl shadow-slate-300/25 ring-1 ring-slate-200/70 backdrop-blur-md dark:bg-card/90 dark:shadow-black/40 dark:ring-white/10">
-        <CardHeader className="border-b border-border/50 bg-gradient-to-br from-card via-card to-primary/[0.06] px-4 pb-4 pt-4 dark:to-primary/10 sm:px-5">
-          <h1 className="sr-only">NottinghamGo — University of Nottingham Malaysia Shuttle App by Yoonjae Lee</h1>
-          <div
-            className="flex items-center justify-between gap-3 sm:gap-4"
-            aria-label="University and Students' Association branding"
-          >
-            <Image
-              src="/branding/nottingham-brand-blue-horizontal.png"
-              alt="University of Nottingham Malaysia"
-              width={450}
-              height={173}
-              className="h-12 w-auto shrink object-contain object-left sm:h-14 max-h-[3.6rem] sm:max-h-[4.1rem] max-w-[min(72%,19rem)] sm:max-w-[min(80%,21rem)]"
-              priority
-            />
-            <button
-              type="button"
-              onClick={() => setShowSecretGame(true)}
-              className="group shrink rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-              aria-label="Students' Association of the University of Nottingham Malaysia"
+        <Card className="relative w-full max-w-[95%] sm:max-w-md rounded-2xl border-border/60 bg-card/85 shadow-xl shadow-slate-300/25 ring-1 ring-slate-200/70 backdrop-blur-md dark:bg-card/90 dark:shadow-black/40 dark:ring-white/10">
+          <CardHeader className="border-b border-border/50 bg-gradient-to-br from-card via-card to-primary/[0.06] px-4 pb-4 pt-4 dark:to-primary/10 sm:px-5">
+            <h1 className="sr-only">NottinghamGo — University of Nottingham Malaysia Shuttle App by Yoonjae Lee</h1>
+            <div
+              className="flex items-center justify-between gap-3 sm:gap-4"
+              aria-label="University and Students' Association branding"
             >
               <Image
-                src="/branding/students-association-unm.png"
-                alt="Students' Association of the University of Nottingham Malaysia"
-                width={440}
-                height={176}
-                className="h-14 w-auto max-h-16 min-h-[3.35rem] object-contain transition duration-200 group-hover:scale-[1.03] group-active:scale-[0.98] sm:h-16 sm:max-h-[4.25rem] sm:min-h-16 max-w-[min(76%,17.5rem)] sm:max-w-[min(82%,19.5rem)]"
-              />
-            </button>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <div className="space-y-4">
-            <div
-              className="relative flex w-full rounded-2xl border border-border/60 bg-muted/60 p-1 shadow-sm sm:mx-auto sm:max-w-sm"
-              role="tablist"
-              aria-label="Choose shuttle type"
-            >
-              <span
-                aria-hidden
-                style={{ transitionTimingFunction: "cubic-bezier(0.32, 0.72, 0, 1)" }}
-                className={cn(
-                  "pointer-events-none absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-xl bg-background shadow-md ring-1 ring-black/5 transition-transform duration-300 motion-reduce:transition-none dark:ring-white/10",
-                  isBuggy ? "translate-x-full" : "translate-x-0",
-                )}
+                src="/branding/nottingham-brand-blue-horizontal.png"
+                alt="University of Nottingham Malaysia"
+                width={450}
+                height={173}
+                className="h-12 w-auto shrink object-contain object-left sm:h-14 max-h-[3.6rem] sm:max-h-[4.1rem] max-w-[min(72%,19rem)] sm:max-w-[min(80%,21rem)]"
+                priority
               />
               <button
                 type="button"
-                role="tab"
-                aria-selected={!isBuggy}
-                onClick={() => setIsBuggy(false)}
-                className={cn(
-                  "relative z-10 flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-200",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                  !isBuggy ? "text-foreground" : "text-muted-foreground hover:text-foreground/80",
-                )}
+                onClick={() => setShowSecretGame(true)}
+                className="group shrink rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                aria-label="Students' Association of the University of Nottingham Malaysia"
               >
-                <BusFront
-                  className={cn("h-5 w-5 shrink-0 transition-transform duration-200", !isBuggy && "scale-105")}
-                  strokeWidth={!isBuggy ? 2.25 : 2}
-                  aria-hidden
+                <Image
+                  src="/branding/students-association-unm.png"
+                  alt="Students' Association of the University of Nottingham Malaysia"
+                  width={440}
+                  height={176}
+                  className="h-14 w-auto max-h-16 min-h-[3.35rem] object-contain transition duration-200 group-hover:scale-[1.03] group-active:scale-[0.98] sm:h-16 sm:max-h-[4.25rem] sm:min-h-16 max-w-[min(76%,17.5rem)] sm:max-w-[min(82%,19.5rem)]"
                 />
-                <span>Bus</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={isBuggy}
-                onClick={() => setIsBuggy(true)}
-                className={cn(
-                  "relative z-10 flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-200",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                  isBuggy ? "text-foreground" : "text-muted-foreground hover:text-foreground/80",
-                )}
-              >
-                <CarFront
-                  className={cn("h-5 w-5 shrink-0 transition-transform duration-200", isBuggy && "scale-105")}
-                  strokeWidth={isBuggy ? 2.25 : 2}
-                  aria-hidden
-                />
-                <span>Buggy</span>
               </button>
             </div>
-
-            {isBuggy ? (
-              <Select onValueChange={(value) => setSelectedStop(Number(value))} defaultValue={selectedStop.toString()}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a stop" />
-                </SelectTrigger>
-                <SelectContent>
-                  {buggyStops.map((stop, index) => (
-                    <SelectItem key={stop} value={index.toString()}>
-                      {stop}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={isPublicHoliday}
-                      onChange={(event) => setIsPublicHoliday(event.target.checked)}
-                      className="h-4 w-4 accent-primary"
-                    />
-                    Public holiday schedule
-                  </label>
-                  <p className="mt-1 text-xs text-muted-foreground">Select on public holidays; holidays are not detected automatically.</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 mb-2">Select your destination:</p>
-                  <Select
-                    onValueChange={(value) => {
-                      setSelectedDestination(value)
-                      setSelectedDirection(null) // Reset direction when destination changes
-                    }}
-                    defaultValue={selectedDestination}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Choose a destination" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {busDestinations.map((destination) => (
-                        <SelectItem key={destination.id} value={destination.id}>
-                          {destination.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {selectedDestination && (
-                  <div>
-                    <p className="text-sm text-gray-600 mb-2">Select direction:</p>
-                    <div className="flex space-x-2">
-                      <Button
-                        onClick={() => setSelectedDirection("out")}
-                        variant={selectedDirection === "out" ? "default" : "outline"}
-                        className="flex-1"
-                      >
-                        From Campus
-                      </Button>
-                      <Button
-                        onClick={() => setSelectedDirection("in")}
-                        variant={selectedDirection === "in" ? "default" : "outline"}
-                        className="flex-1"
-                      >
-                        To Campus
-                      </Button>
-                    </div>
-                  </div>
-                )}
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <div
+                className="relative flex w-full rounded-2xl border border-border/60 bg-muted/60 p-1 shadow-sm sm:mx-auto sm:max-w-sm"
+                role="tablist"
+                aria-label="Choose shuttle type"
+              >
+                <span
+                  aria-hidden
+                  style={{ transitionTimingFunction: "cubic-bezier(0.32, 0.72, 0, 1)" }}
+                  className={cn(
+                    "pointer-events-none absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-xl bg-background shadow-md ring-1 ring-black/5 transition-transform duration-300 motion-reduce:transition-none dark:ring-white/10",
+                    isBuggy ? "translate-x-full" : "translate-x-0",
+                  )}
+                />
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={!isBuggy}
+                  onClick={() => setIsBuggy(false)}
+                  className={cn(
+                    "relative z-10 flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-200",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                    !isBuggy ? "text-foreground" : "text-muted-foreground hover:text-foreground/80",
+                  )}
+                >
+                  <BusFront
+                    className={cn("h-5 w-5 shrink-0 transition-transform duration-200", !isBuggy && "scale-105")}
+                    strokeWidth={!isBuggy ? 2.25 : 2}
+                    aria-hidden
+                  />
+                  <span>Bus</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={isBuggy}
+                  onClick={() => setIsBuggy(true)}
+                  className={cn(
+                    "relative z-10 flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-200",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                    isBuggy ? "text-foreground" : "text-muted-foreground hover:text-foreground/80",
+                  )}
+                >
+                  <CarFront
+                    className={cn("h-5 w-5 shrink-0 transition-transform duration-200", isBuggy && "scale-105")}
+                    strokeWidth={isBuggy ? 2.25 : 2}
+                    aria-hidden
+                  />
+                  <span>Buggy</span>
+                </button>
               </div>
-            )}
 
-            {showFullSchedule ? (
-              isBuggy ? (
-                <FullBuggySchedule
-                  onClose={() => setShowFullSchedule(false)}
-                  isFriday={isFriday}
-                  buggy={timetable.buggy}
-                />
+              {isBuggy ? (
+                <Select onValueChange={(value) => setSelectedStop(Number(value))} defaultValue={selectedStop.toString()}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a stop" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {buggyStops.map((stop, index) => (
+                      <SelectItem key={stop} value={index.toString()}>
+                        {stop}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               ) : (
-                <FullBusSchedule
-                  destination={selectedDestination}
-                  timetable={timetable.bus}
-                  onClose={() => setShowFullSchedule(false)}
-                />
-              )
-            ) : (
-              <>
-                {isBuggy ? (
-                  <BuggyScheduleDisplay
-                    nextArrival={buggyNextArrival}
-                    arrivalTimes={buggyArrivalTimes}
-                    scheduleType={scheduleType === "weekend" ? "Weekend" : "Weekday"}
-                    stopIndex={selectedStop}
+                <div className="space-y-4">
+                  <div>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={isPublicHoliday}
+                        onChange={(event) => setIsPublicHoliday(event.target.checked)}
+                        className="h-4 w-4 accent-primary"
+                      />
+                      Public holiday schedule
+                    </label>
+                    <p className="mt-1 text-xs text-muted-foreground">Select on public holidays; holidays are not detected automatically.</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 mb-2">Select your destination:</p>
+                    <Select
+                      onValueChange={(value) => {
+                        setSelectedDestination(value)
+                        setSelectedDirection(null) // Reset direction when destination changes
+                      }}
+                      defaultValue={selectedDestination}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Choose a destination" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {busDestinations.map((destination) => (
+                          <SelectItem key={destination.id} value={destination.id}>
+                            {destination.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {selectedDestination && (
+                    <div>
+                      <p className="text-sm text-gray-600 mb-2">Select direction:</p>
+                      <div className="flex space-x-2">
+                        <Button
+                          onClick={() => setSelectedDirection("out")}
+                          variant={selectedDirection === "out" ? "default" : "outline"}
+                          className="flex-1"
+                        >
+                          From Campus
+                        </Button>
+                        <Button
+                          onClick={() => setSelectedDirection("in")}
+                          variant={selectedDirection === "in" ? "default" : "outline"}
+                          className="flex-1"
+                        >
+                          To Campus
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {showFullSchedule ? (
+                isBuggy ? (
+                  <FullBuggySchedule
+                    onClose={() => setShowFullSchedule(false)}
                     isFriday={isFriday}
                     buggy={timetable.buggy}
-                    currentTime={currentTime}
-                  />
-                ) : selectedDirection ? (
-                  <BusScheduleDisplay
-                    destination={selectedDestination}
-                    direction={selectedDirection}
-                    schedule={selectedDirection === "out" ? busOutSchedule : busInSchedule}
-                    nextDeparture={selectedDirection === "out" ? busNextDepartureOut : busNextDepartureIn}
-                    notes={timetable.bus[selectedDestination].notes}
-                    scheduleType={busScheduleType}
-                    currentTime={currentTime}
                   />
                 ) : (
-                  <Card className="w-full">
-                    <CardContent className="pt-6">
-                      <p className="text-center text-gray-500 text-sm">
-                        Please select a direction above
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
-                {!isBuggy && !showFullSchedule && (
-                  <LiveBusErrorBoundary>
-                    <LiveBusLocation selectedDestination={selectedDestination} />
-                  </LiveBusErrorBoundary>
-                )}
-                <Button onClick={() => setShowFullSchedule(true)} variant="outline" className="w-full text-sm">
-                  View Full Schedule
-                </Button>
-              </>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+                  <FullBusSchedule
+                    destination={selectedDestination}
+                    timetable={timetable.bus}
+                    onClose={() => setShowFullSchedule(false)}
+                  />
+                )
+              ) : (
+                <>
+                  {isBuggy ? (
+                    <BuggyScheduleDisplay
+                      nextArrival={buggyNextArrival}
+                      arrivalTimes={buggyArrivalTimes}
+                      scheduleType={scheduleType === "weekend" ? "Weekend" : "Weekday"}
+                      stopIndex={selectedStop}
+                      isFriday={isFriday}
+                      buggy={timetable.buggy}
+                      currentTime={currentTime}
+                    />
+                  ) : selectedDirection ? (
+                    <BusScheduleDisplay
+                      destination={selectedDestination}
+                      direction={selectedDirection}
+                      schedule={selectedDirection === "out" ? busOutSchedule : busInSchedule}
+                      nextDeparture={selectedDirection === "out" ? busNextDepartureOut : busNextDepartureIn}
+                      notes={timetable.bus[selectedDestination].notes}
+                      scheduleType={busScheduleType}
+                      currentTime={currentTime}
+                    />
+                  ) : (
+                    <Card className="w-full">
+                      <CardContent className="pt-6">
+                        <p className="text-center text-gray-500 text-sm">
+                          Please select a direction above
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
+                  {!isBuggy && !showFullSchedule && (
+                    <LiveBusErrorBoundary>
+                      <LiveBusLocation selectedDestination={selectedDestination} />
+                    </LiveBusErrorBoundary>
+                  )}
+                  <Button onClick={() => setShowFullSchedule(true)} variant="outline" className="w-full text-sm">
+                    View Full Schedule
+                  </Button>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
-      <footer className="mt-6 text-center text-xs text-muted-foreground/80 max-w-xs sm:max-w-sm leading-relaxed px-2">
-        <p className="font-medium text-foreground/85">
-          NottinghamGo <span className="font-normal text-muted-foreground">by Yoonjae Lee</span>
-        </p>
-        <p className="text-[11px] text-muted-foreground/90 mt-0.5">
-          BSc (Hons) Computer Science with Artificial Intelligence
-        </p>
-        <p className="text-[11px] text-muted-foreground/80 italic mt-1">
-          For the great convenience of students and staff at the University of Nottingham Malaysia.
-        </p>
-      </footer>
-      {showSecretGame && <SecretBusGame onClose={() => setShowSecretGame(false)} />}
-      {showAdmin && <AdminPanel onClose={() => setShowAdmin(false)} onTimetableChange={setTimetable} />}
-    </main>
+        <footer className="mt-6 text-center text-xs text-muted-foreground/80 max-w-xs sm:max-w-sm leading-relaxed px-2">
+          <p className="font-medium text-foreground/85">
+            NottinghamGo <span className="font-normal text-muted-foreground">by Yoonjae Lee</span>
+          </p>
+          <p className="text-[11px] text-muted-foreground/90 mt-0.5">
+            BSc (Hons) Computer Science with Artificial Intelligence
+          </p>
+          <p className="text-[11px] text-muted-foreground/80 italic mt-1">
+            For the great convenience of students and staff at the University of Nottingham Malaysia.
+          </p>
+        </footer>
+        {showSecretGame && <SecretBusGame onClose={() => setShowSecretGame(false)} />}
+        {showAdmin && <AdminPanel onClose={() => setShowAdmin(false)} onLiveChange={showLive} />}
+      </main>
+    </>
   )
 }

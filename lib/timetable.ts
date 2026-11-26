@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { ANNOUNCEMENT_LIMITS, type Announcement } from "./announcement.ts"
 import {
   busDestinations,
   busScheduleLabels,
@@ -118,4 +119,45 @@ export function parseTimetable(input: unknown): ParseResult {
   const fridayExceptions = [...new Set(result.data.buggy.fridayExceptions)].filter((t) => times.includes(t)).sort()
 
   return { ok: true, timetable: { bus, buggy: { times, fridayExceptions } } }
+}
+
+const announcementSchema = z.object({
+  tone: z.enum(["info", "warning", "alert", "success"]),
+  title: z
+    .string()
+    .trim()
+    .max(ANNOUNCEMENT_LIMITS.title, `Keep the title under ${ANNOUNCEMENT_LIMITS.title} characters`)
+    .optional(),
+  message: z
+    .string()
+    .trim()
+    .min(1, "Write a message")
+    .max(ANNOUNCEMENT_LIMITS.message, `Keep the message under ${ANNOUNCEMENT_LIMITS.message} characters`),
+  linkUrl: z
+    .string()
+    .trim()
+    .max(ANNOUNCEMENT_LIMITS.linkUrl)
+    // Only web links: anything else (e.g. javascript:) could run code for every visitor.
+    .refine((url) => url === "" || /^https?:\/\/\S+$/i.test(url), "Links must start with http:// or https://")
+    .optional(),
+  linkLabel: z.string().trim().max(ANNOUNCEMENT_LIMITS.linkLabel, "Keep the link text short").optional(),
+})
+
+export type AnnouncementResult = { ok: true; announcement: Announcement | null } | { ok: false; error: string }
+
+/** Validates the announcement banner; null/undefined means no banner. Blank optional fields are dropped. */
+export function parseAnnouncement(input: unknown): AnnouncementResult {
+  if (input === null || input === undefined) return { ok: true, announcement: null }
+  const result = announcementSchema.safeParse(input)
+  if (!result.success) return { ok: false, error: `Announcement: ${result.error.issues[0].message}` }
+  const { tone, title, message, linkUrl, linkLabel } = result.data
+  return {
+    ok: true,
+    announcement: {
+      tone,
+      ...(title ? { title } : {}),
+      message,
+      ...(linkUrl ? { linkUrl, ...(linkLabel ? { linkLabel } : {}) } : {}),
+    },
+  }
 }

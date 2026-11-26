@@ -1,16 +1,17 @@
 import { defaultTimetable } from "@/lib/data"
-import { readTimetableState } from "@/lib/timetableStore"
-import HomePage from "./components/HomePage"
+import { getLiveContent } from "@/lib/liveContent"
+import HomePage, { type LiveContent } from "./components/HomePage"
 
-// Saving in the admin panel revalidates this page straight away; this is just a safety net.
+// Publishing in the admin panel revalidates this page straight away; this is just a safety net.
 export const revalidate = 60
 
 export default async function Page() {
-  let timetable = defaultTimetable
+  // Version -1 lets any successfully fetched version replace this fallback.
+  let live: LiveContent = { version: -1, timetable: defaultTimetable, announcement: null }
   try {
-    timetable = (await readTimetableState()).timetable
+    live = await getLiveContent()
   } catch (error) {
-    console.error("Couldn't load the saved timetable; using the built-in one.", error)
+    console.error("Couldn't load the live content; using the built-in timetable.", error)
   }
-  return <HomePage initialTimetable={timetable} />
+  return <HomePage initialLive={live} />
 }
