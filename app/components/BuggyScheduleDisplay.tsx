@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
-import { buggyStops } from "@/lib/data"
+import { buggyStops, describeFridayGap, type BuggyTimetable } from "@/lib/data"
 import { formatArrivalCountdown } from "@/lib/arrivalCountdown"
 import { getBuggySlotVisual } from "@/lib/scheduleSlotVisual"
 import { ScheduleTimeSlot } from "./ScheduleTimeSlot"
@@ -14,6 +14,7 @@ interface BuggyScheduleDisplayProps {
   scheduleType: "Weekday" | "Weekend"
   stopIndex: number
   isFriday: boolean
+  buggy: BuggyTimetable
   currentTime: Date
 }
 
@@ -23,9 +24,11 @@ export default function BuggyScheduleDisplay({
   scheduleType,
   stopIndex,
   isFriday,
+  buggy,
   currentTime,
 }: BuggyScheduleDisplayProps) {
   const stopName = buggyStops[stopIndex] ?? "Stop"
+  const fridayGap = describeFridayGap(buggy)
 
   const arrivalCountdownLabel = (() => {
     if (scheduleType !== "Weekday" || !nextArrival) return null
@@ -86,11 +89,11 @@ export default function BuggyScheduleDisplay({
       <CardContent className={scheduleType === "Weekend" ? "hidden" : undefined}>
         {scheduleType === "Weekday" && (
           <>
-            {isFriday && (
+            {isFriday && fridayGap && (
               <Alert className="mb-4 border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
                 <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                 <AlertDescription className="text-sm">
-                  No service between 12:30 PM – 2:00 PM (Friday prayer).
+                  No service {fridayGap} (Friday prayer).
                 </AlertDescription>
               </Alert>
             )}

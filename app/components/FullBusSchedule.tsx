@@ -5,18 +5,19 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { busSchedule, busDestinations, getBusNextDeparture, type ScheduleType } from "@/lib/data"
+import { busDestinations, getBusNextDeparture, type BusTimetable, type ScheduleType } from "@/lib/data"
 import { getBusSlotVisual } from "@/lib/scheduleSlotVisual"
 import { ScheduleTimeSlot } from "./ScheduleTimeSlot"
 
 interface FullBusScheduleProps {
   destination: string
+  timetable: BusTimetable
   onClose: () => void
 }
 
-export default function FullBusSchedule({ destination, onClose }: FullBusScheduleProps) {
+export default function FullBusSchedule({ destination, timetable, onClose }: FullBusScheduleProps) {
   const [now, setNow] = useState(() => new Date())
-  const schedule = busSchedule[destination]
+  const schedule = timetable[destination]
   const destinationName = busDestinations.find((d) => d.id === destination)?.name || destination
 
   useEffect(() => {
@@ -26,8 +27,8 @@ export default function FullBusSchedule({ destination, onClose }: FullBusSchedul
   }, [])
 
   const renderSchedule = (scheduleType: ScheduleType) => {
-    const nextOut = getBusNextDeparture(destination, scheduleType, "out", now)
-    const nextIn = getBusNextDeparture(destination, scheduleType, "in", now)
+    const nextOut = getBusNextDeparture(destination, scheduleType, "out", now, timetable)
+    const nextIn = getBusNextDeparture(destination, scheduleType, "in", now, timetable)
     return (
       <Table>
         <TableHeader>

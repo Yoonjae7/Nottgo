@@ -7,17 +7,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
-import { buggySchedule, buggyStops, fridayExceptionTimes, getBuggyNextArrival } from "@/lib/data"
+import { buggyStops, describeFridayGap, getBuggyNextArrival, type BuggyTimetable } from "@/lib/data"
 import { getBuggySlotVisual } from "@/lib/scheduleSlotVisual"
 import { ScheduleTimeSlot } from "./ScheduleTimeSlot"
 
 interface FullBuggyScheduleProps {
   onClose: () => void
   isFriday: boolean
+  buggy: BuggyTimetable
 }
 
-export default function FullBuggySchedule({ onClose, isFriday }: FullBuggyScheduleProps) {
+export default function FullBuggySchedule({ onClose, isFriday, buggy }: FullBuggyScheduleProps) {
   const [now, setNow] = useState(() => new Date())
+  const fridayGap = describeFridayGap(buggy, "-")
 
   useEffect(() => {
     setNow(new Date())
@@ -28,16 +30,16 @@ export default function FullBuggySchedule({ onClose, isFriday }: FullBuggySchedu
   /** Per-row cell times only depend on the base schedule + stop offset (3 min/stop), not on `now`. */
   const cellTimesPerRow = useMemo(() => {
     const baseDate = new Date()
-    return buggySchedule.map((baseTime) => {
+    return buggy.times.map((baseTime) => {
       const parsed = parse(baseTime, "HH:mm", baseDate)
       return buggyStops.map((_, index) => format(addMinutes(parsed, 3 * index), "HH:mm"))
     })
-  }, [])
+  }, [buggy.times])
 
   /** One next-arrival per stop — recomputed when the clock ticks or Friday flips. */
   const nextArrivalsPerStop = useMemo(
-    () => buggyStops.map((_, index) => getBuggyNextArrival(index, now, isFriday)),
-    [now, isFriday],
+    () => buggyStops.map((_, index) => getBuggyNextArrival(index, now, isFriday, buggy)),
+    [now, isFriday, buggy],
   )
 
   return (
@@ -47,10 +49,10 @@ export default function FullBuggySchedule({ onClose, isFriday }: FullBuggySchedu
         <CardDescription className="text-sm">
           Monday - Friday (No service on Weekends and Public Holidays)
         </CardDescription>
-        {isFriday && (
+        {isFriday && fridayGap && (
           <Alert variant="destructive" className="mt-2">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>No service between 12:30 PM - 2:00 PM due to Friday Prayer</AlertDescription>
+            <AlertDescription>No service {fridayGap} due to Friday Prayer</AlertDescription>
           </Alert>
         )}
       </CardHeader>
@@ -67,8 +69,8 @@ export default function FullBuggySchedule({ onClose, isFriday }: FullBuggySchedu
               </TableRow>
             </TableHeader>
             <TableBody>
-              {buggySchedule.map((time, rowIndex) => {
-                const isFridayException = isFriday && fridayExceptionTimes.includes(time)
+              {buggy.times.map((time, rowIndex) => {
+                const isFridayException = isFriday && buggy.fridayExceptions.includes(time)
                 return (
                   <TableRow key={time} className={isFridayException ? "bg-red-50" : ""}>
                     {buggyStops.map((_, index) => {
@@ -98,7 +100,7 @@ export default function FullBuggySchedule({ onClose, isFriday }: FullBuggySchedu
             </TableBody>
           </Table>
         </div>
-        {isFriday && (
+        {isFriday && fridayGap && (
           <div className="p-4 text-xs text-red-500">* Rows in red indicate no service due to Friday Prayer</div>
         )}
         <div className="p-4">

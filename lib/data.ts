@@ -38,9 +38,23 @@ export interface ScheduleEntry {
   sundayOnly?: boolean
 }
 
-type DirectionSchedule = { out: ScheduleEntry[]; in: ScheduleEntry[] }
-type BusRouteSchedule = Record<ScheduleType, DirectionSchedule> & {
+export type DirectionSchedule = { out: ScheduleEntry[]; in: ScheduleEntry[] }
+export type BusRouteSchedule = Record<ScheduleType, DirectionSchedule> & {
   notes: string | { out: string; in: string }
+}
+export type BusTimetable = Record<string, BusRouteSchedule>
+
+export interface BuggyTimetable {
+  /** Departure times from the first stop (Trent Building); later stops add 3 minutes each. */
+  times: string[]
+  /** Departures that do not run on Fridays (Friday Prayer). */
+  fridayExceptions: string[]
+}
+
+/** Everything the admin panel can edit. The constants in this file are the built-in defaults. */
+export interface Timetable {
+  bus: BusTimetable
+  buggy: BuggyTimetable
 }
 
 export const busDestinations = [
@@ -53,7 +67,7 @@ export const busDestinations = [
 ]
 
 // Times: UNM Shuttle Bus Schedule, effective 31 October 2026 (pages 1-4).
-export const busSchedule: Record<string, BusRouteSchedule> = {
+export const busSchedule: BusTimetable = {
   TBS: {
     weekday: {
       out: [{ time: "18:45", serviceType: "bus" }],
@@ -355,6 +369,11 @@ export const busSchedule: Record<string, BusRouteSchedule> = {
   },
 }
 
+export const defaultTimetable: Timetable = {
+  bus: busSchedule,
+  buggy: { times: buggySchedule, fridayExceptions: fridayExceptionTimes },
+}
+
 export function getScheduleType(date: Date, isPublicHoliday = false): ScheduleType {
   if (isPublicHoliday) return "publicHoliday"
   const day = date.getDay()
@@ -368,8 +387,9 @@ export function getBusSchedule(
   scheduleType: ScheduleType,
   direction: "out" | "in",
   date?: Date,
+  timetable: BusTimetable = busSchedule,
 ): ScheduleEntry[] {
-  const entries = busSchedule[destination]?.[scheduleType]?.[direction] || []
+  const entries = timetable[destination]?.[scheduleType]?.[direction] || []
   // Without a date, return all slots for the full timetable, including Saturday-only and Sunday-only trips.
   return date
     ? entries.filter(
@@ -384,20 +404,25 @@ export function getBusNextDeparture(
   scheduleType: ScheduleType,
   direction: "out" | "in",
   currentTime: Date,
+  timetable: BusTimetable = busSchedule,
 ): string | null {
-  const scheduleEntries = getBusSchedule(destination, scheduleType, direction, currentTime)
+  const scheduleEntries = getBusSchedule(destination, scheduleType, direction, currentTime, timetable)
   const currentTimeString = format(currentTime, "HH:mm")
   const nextEntry = scheduleEntries.find((entry) => entry.time > currentTimeString)
   return nextEntry ? nextEntry.time : null
 }
 
-export function getBuggyArrivalTimes(stopIndex: number, isFriday: boolean): string[] {
+export function getBuggyArrivalTimes(
+  stopIndex: number,
+  isFriday: boolean,
+  buggy: BuggyTimetable = defaultTimetable.buggy,
+): string[] {
   if (stopIndex === -1) return []
 
-  return buggySchedule
+  return buggy.times
     .map((time) => {
       // Skip times that don't run on Friday
-      if (isFriday && fridayExceptionTimes.includes(time)) {
+      if (isFriday && buggy.fridayExceptions.includes(time)) {
         return null
       }
 
@@ -408,11 +433,33 @@ export function getBuggyArrivalTimes(stopIndex: number, isFriday: boolean): stri
     .filter((time): time is string => time !== null)
 }
 
-export function getBuggyNextArrival(stopIndex: number, currentTime: Date, isFriday: boolean): string | null {
+/**
+ * Describes when buggies don't run on Fridays, e.g. "between 12:30 PM – 2:00 PM" for a run of
+ * consecutive departures, "at 9:30 AM, 4:00 PM" otherwise. Null when every departure runs.
+ */
+export function describeFridayGap(buggy: BuggyTimetable, rangeSeparator = "–"): string | null {
+  const skipped = buggy.times.filter((time) => buggy.fridayExceptions.includes(time)).sort()
+  if (skipped.length === 0) return null
+  const label = (time: string) => format(parse(time, "HH:mm", new Date()), "h:mm a")
+  const sortedTimes = [...buggy.times].sort()
+  const firstIndex = sortedTimes.indexOf(skipped[0])
+  const consecutive = skipped.every((time, i) => sortedTimes[firstIndex + i] === time)
+  if (skipped.length > 1 && consecutive) {
+    return `between ${label(skipped[0])} ${rangeSeparator} ${label(skipped[skipped.length - 1])}`
+  }
+  return `at ${skipped.map(label).join(", ")}`
+}
+
+export function getBuggyNextArrival(
+  stopIndex: number,
+  currentTime: Date,
+  isFriday: boolean,
+  buggy: BuggyTimetable = defaultTimetable.buggy,
+): string | null {
   if (stopIndex === -1) return null
 
   const currentTimeString = format(currentTime, "HH:mm")
-  const adjustedTimes = getBuggyArrivalTimes(stopIndex, isFriday)
+  const adjustedTimes = getBuggyArrivalTimes(stopIndex, isFriday, buggy)
 
   return adjustedTimes.find((time) => time > currentTimeString) || null
 }
